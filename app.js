@@ -59,20 +59,12 @@ function showStatus(message, isError = false) {
     statusMessage.className = 'status ' + (isError ? 'error' : 'success');
 }
 
-async function updatePrices() {
+function updatePrices() {
     showLoading();
 
-    try {
-        // Get WFCA price
-        // Fixed prices for now
-        currentWfcaPrice = 12.15;  // 12.15 JPY per WFCA
-        currentJpycPrice = 0.0066; // 0.0066 USD per JPY
-    } catch (error) {
-        console.error('価格取得エラー:', error);
-        // Use fixed prices as fallback
-        currentWfcaPrice = 12.15;  // 12.15 JPY per WFCA
-        currentJpycPrice = 0.0066; // 0.0066 USD per JPY
-    }
+    // Fixed prices
+    currentWfcaPrice = 12.15;  // 12.15 JPY per WFCA
+    currentJpycPrice = 0.0066; // 0.0066 USD per JPY
 
     // Update UI
     document.getElementById('wfcaPrice').textContent = currentWfcaPrice.toFixed(2);
