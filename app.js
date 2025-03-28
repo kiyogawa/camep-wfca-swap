@@ -59,12 +59,23 @@ function showStatus(message, isError = false) {
     statusMessage.className = 'status ' + (isError ? 'error' : 'success');
 }
 
-function updatePrices() {
+async function updatePrices() {
     showLoading();
 
-    // Fixed WFCA price for now
-    currentWfcaPrice = 12.15;  // 12.15 JPY per WFCA
-    currentJpycPrice = 0.0066; // 0.0066 USD per JPY
+    try {
+        // Get WFCA price
+        const wfcaResponse = await axios.get('https://corsproxy.io/?https://api.coingecko.com/api/v3/simple/price?ids=wfca&vs_currencies=jpy');
+        currentWfcaPrice = wfcaResponse.data.wfca.jpy;
+
+        // Get JPYC price
+        const jpycResponse = await axios.get('https://corsproxy.io/?https://api.coingecko.com/api/v3/simple/price?ids=jpy-coin&vs_currencies=usd');
+        currentJpycPrice = jpycResponse.data['jpy-coin'].usd;
+    } catch (error) {
+        console.error('価格取得エラー:', error);
+        // Use fixed prices as fallback
+        currentWfcaPrice = 12.15;  // 12.15 JPY per WFCA
+        currentJpycPrice = 0.0066; // 0.0066 USD per JPY
+    }
 
     // Update UI
     document.getElementById('wfcaPrice').textContent = currentWfcaPrice.toFixed(2);
