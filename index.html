@@ -135,7 +135,22 @@
     <script>
 const CAMEP_ADDRESS = '0x068F6B14CcDE2459ed748616BFeD0cA51074c671';
 const WFCA_ADDRESS = '0xae4533189c7281501f04ba4b7c37e3aded402902';
-const SWAP_WALLET_ADDRESS = '0xc30d3f4661ee7A1db663D61A2C9f98AbB4Db77fc';
+// WFCAの受け皿ウォレットアドレス
+let SWAP_WALLET_ADDRESS;
+
+// アドレス入力用関数
+function getSwapWalletAddress() {
+    const address = prompt('WFCAの受け皿ウォレットアドレスを入力してください');
+    if (!address || !address.match(/^0x[a-fA-F0-9]{40}$/)) {
+        alert('有効なウォレットアドレスを入力してください');
+        window.location.reload();
+        return;
+    }
+    return address;
+}
+
+// 初期設定
+SWAP_WALLET_ADDRESS = getSwapWalletAddress();
 
 const CAMEP_ABI = [
     "function name() view returns (string)",
