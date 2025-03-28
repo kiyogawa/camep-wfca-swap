@@ -47,14 +47,12 @@ async function updatePrices() {
     try {
         showLoading();
         // Get WFCA price
-        const wfcaResponse = await axios.get('https://api.allorigins.win/get?url=' + encodeURIComponent('https://api.coingecko.com/api/v3/simple/price?ids=wfca&vs_currencies=jpy'));
-        const wfcaData = JSON.parse(wfcaResponse.data.contents);
-        currentWfcaPrice = wfcaData.wfca.jpy;
+        const wfcaResponse = await axios.get('https://corsproxy.io/?https://api.coingecko.com/api/v3/simple/price?ids=wfca&vs_currencies=jpy');
+        currentWfcaPrice = wfcaResponse.data.wfca.jpy;
 
         // Get JPYC price
-        const jpycResponse = await axios.get('https://api.allorigins.win/get?url=' + encodeURIComponent('https://api.coingecko.com/api/v3/simple/price?ids=jpy-coin&vs_currencies=usd'));
-        const jpycData = JSON.parse(jpycResponse.data.contents);
-        currentJpycPrice = jpycData['jpy-coin'].usd;
+        const jpycResponse = await axios.get('https://corsproxy.io/?https://api.coingecko.com/api/v3/simple/price?ids=jpy-coin&vs_currencies=usd');
+        currentJpycPrice = jpycResponse.data['jpy-coin'].usd;
 
         // Update UI
         document.getElementById('wfcaPrice').textContent = currentWfcaPrice.toFixed(2);
