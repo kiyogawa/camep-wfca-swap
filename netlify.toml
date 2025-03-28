@@ -3,7 +3,7 @@
   command = ""
 
 [build.processing]
-  skip_processing = false
+  skip_processing = true
 
 [[headers]]
   for = "/*"
