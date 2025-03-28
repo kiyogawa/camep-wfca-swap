@@ -61,7 +61,7 @@ function showStatus(message, isError = false) {
 
 function updatePrices() {
     showLoading();
-    
+
     // Fixed WFCA price for now
     currentWfcaPrice = 12.15;  // 12.15 JPY per WFCA
     currentJpycPrice = 0.0066; // 0.0066 USD per JPY
@@ -78,7 +78,7 @@ function updatePrices() {
 function updateWfcaAmount() {
     const camepAmount = document.getElementById('camepAmount').value;
     const swapButton = document.getElementById('swapButton');
-    
+
     if (camepAmount && currentWfcaPrice > 0) {
         // 1 CAMEP = 1 JPY worth of WFCA
         const jpyValue = camepAmount * 1;
@@ -115,14 +115,14 @@ async function connectWallet() {
 
             // Check if already connected
             let accounts = await window.ethereum.request({ method: 'eth_accounts' });
-            
+
             // If not connected, request connection
             if (!accounts.length) {
                 accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
             }
 
             userAccount = accounts[0];
-            
+
             // Check network
             const chainId = await window.ethereum.request({ method: 'eth_chainId' });
             if (chainId !== '0x1') { // Ethereum Mainnet
@@ -132,7 +132,7 @@ async function connectWallet() {
             }
 
             web3 = new Web3(window.ethereum);
-            
+
             try {
                 camepContract = new web3.eth.Contract(CAMEP_ABI, CAMEP_ADDRESS);
                 wfcaContract = new web3.eth.Contract(WFCA_ABI, WFCA_ADDRESS);
