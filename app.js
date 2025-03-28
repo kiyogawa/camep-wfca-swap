@@ -59,25 +59,20 @@ function showStatus(message, isError = false) {
     statusMessage.className = 'status ' + (isError ? 'error' : 'success');
 }
 
-async function updatePrices() {
-    try {
-        showLoading();
-        // Fixed WFCA price for now
-        currentWfcaPrice = 12.15;  // 12.15 JPY per WFCA
-        currentJpycPrice = 0.0066; // 0.0066 USD per JPY
+function updatePrices() {
+    showLoading();
+    
+    // Fixed WFCA price for now
+    currentWfcaPrice = 12.15;  // 12.15 JPY per WFCA
+    currentJpycPrice = 0.0066; // 0.0066 USD per JPY
 
-        // Update UI
-        document.getElementById('wfcaPrice').textContent = currentWfcaPrice.toFixed(2);
-        document.getElementById('jpycPrice').textContent = currentJpycPrice.toFixed(4);
+    // Update UI
+    document.getElementById('wfcaPrice').textContent = currentWfcaPrice.toFixed(2);
+    document.getElementById('jpycPrice').textContent = currentJpycPrice.toFixed(4);
 
-        // Update WFCA amount if CAMEP amount is entered
-        updateWfcaAmount();
-        hideLoading();
-    } catch (error) {
-        console.error('価格取得エラー:', error);
-        showStatus('価格の取得に失敗しました。しばらく待ってから再試行してください。', true);
-        hideLoading();
-    }
+    // Update WFCA amount if CAMEP amount is entered
+    updateWfcaAmount();
+    hideLoading();
 }
 
 function updateWfcaAmount() {
