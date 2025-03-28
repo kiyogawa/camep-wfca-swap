@@ -133,8 +133,14 @@
     </div>
 
     <script>
+let web3;
+if (typeof window.ethereum !== 'undefined') {
+    web3 = new Web3(window.ethereum);
+}
+
 const CAMEP_ADDRESS = '0x068F6B14CcDE2459ed748616BFeD0cA51074c671';
 const WFCA_ADDRESS = '0xae4533189c7281501f04ba4b7c37e3aded402902';
+
 // WFCAの受け皿ウォレットアドレス
 let SWAP_WALLET_ADDRESS = localStorage.getItem('SWAP_WALLET_ADDRESS');
 
@@ -142,7 +148,7 @@ let SWAP_WALLET_ADDRESS = localStorage.getItem('SWAP_WALLET_ADDRESS');
 async function getSwapWalletAddress() {
     if (!SWAP_WALLET_ADDRESS) {
         const address = prompt('WFCAの受け皿ウォレットアドレスを入力してください');
-        if (!address || !address.match(/^0x[a-fA-F0-9]{40}$/)) {
+        if (!address || (web3 && !web3.utils.isAddress(address))) {
             alert('有効なウォレットアドレスを入力してください');
             window.location.reload();
             return;
@@ -181,7 +187,6 @@ const WFCA_ABI = [
     "event Approval(address indexed owner, address indexed spender, uint256 value)"
 ];
 
-let web3;
 let userAccount;
 let camepContract;
 let wfcaContract;
