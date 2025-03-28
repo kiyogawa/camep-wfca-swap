@@ -347,17 +347,20 @@ document.getElementById('connectWallet').addEventListener('click', connectWallet
 document.getElementById('swapButton').addEventListener('click', performSwap);
 document.getElementById('camepAmount').addEventListener('input', updateWfcaAmount);
 
-// Update prices every 30 seconds
-updatePrices();
-setInterval(updatePrices, 30000);
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Update prices every 30 seconds
+    updatePrices();
+    setInterval(updatePrices, 30000);
 
-// Listen for account changes
-if (window.ethereum) {
-    window.ethereum.on('accountsChanged', function (accounts) {
-        userAccount = accounts[0];
-        connectWallet();
-    });
-}
+    // Listen for account changes
+    if (window.ethereum) {
+        window.ethereum.on('accountsChanged', function (accounts) {
+            userAccount = accounts[0];
+            connectWallet();
+        });
+    }
+});
     </script>
 </body>
 </html>
