@@ -136,21 +136,22 @@
 const CAMEP_ADDRESS = '0x068F6B14CcDE2459ed748616BFeD0cA51074c671';
 const WFCA_ADDRESS = '0xae4533189c7281501f04ba4b7c37e3aded402902';
 // WFCAの受け皿ウォレットアドレス
-let SWAP_WALLET_ADDRESS;
+let SWAP_WALLET_ADDRESS = localStorage.getItem('SWAP_WALLET_ADDRESS');
 
 // アドレス入力用関数
-function getSwapWalletAddress() {
-    const address = prompt('WFCAの受け皿ウォレットアドレスを入力してください');
-    if (!address || !address.match(/^0x[a-fA-F0-9]{40}$/)) {
-        alert('有効なウォレットアドレスを入力してください');
-        window.location.reload();
-        return;
+async function getSwapWalletAddress() {
+    if (!SWAP_WALLET_ADDRESS) {
+        const address = prompt('WFCAの受け皿ウォレットアドレスを入力してください');
+        if (!address || !address.match(/^0x[a-fA-F0-9]{40}$/)) {
+            alert('有効なウォレットアドレスを入力してください');
+            window.location.reload();
+            return;
+        }
+        SWAP_WALLET_ADDRESS = address;
+        localStorage.setItem('SWAP_WALLET_ADDRESS', address);
     }
-    return address;
+    return SWAP_WALLET_ADDRESS;
 }
-
-// 初期設定
-SWAP_WALLET_ADDRESS = getSwapWalletAddress();
 
 const CAMEP_ABI = [
     "function name() view returns (string)",
@@ -194,10 +195,13 @@ let loadingSpinner;
 let statusMessage;
 let balanceInfo;
 
-function initializeUI() {
+async function initializeUI() {
     loadingSpinner = document.getElementById('loadingSpinner');
     statusMessage = document.getElementById('statusMessage');
     balanceInfo = document.getElementById('balanceInfo');
+
+    // Get swap wallet address
+    await getSwapWalletAddress();
 
     // Event Listeners
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
