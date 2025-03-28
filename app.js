@@ -86,11 +86,17 @@ async function updatePrices() {
 
 function updateWfcaAmount() {
     const camepAmount = document.getElementById('camepAmount').value;
+    const swapButton = document.getElementById('swapButton');
+    
     if (camepAmount && currentWfcaPrice > 0) {
         // 1 CAMEP = 1 JPY worth of WFCA
         const jpyValue = camepAmount * 1;
         const wfcaAmount = jpyValue / currentWfcaPrice;
         document.getElementById('wfcaAmount').value = wfcaAmount.toFixed(8);
+        swapButton.disabled = false;
+    } else {
+        document.getElementById('wfcaAmount').value = '';
+        swapButton.disabled = true;
     }
 }
 
@@ -147,7 +153,7 @@ async function connectWallet() {
             }
 
             document.getElementById('connectWallet').textContent = 'ウォレット接続済み';
-            document.getElementById('swapButton').disabled = false;
+            updateWfcaAmount(); // This will handle the swap button state
 
             await updateBalances();
             showStatus('MetaMaskの接続に成功しました！');
