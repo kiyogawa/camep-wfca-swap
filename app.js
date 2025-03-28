@@ -1,5 +1,6 @@
 const CAMEP_ADDRESS = '0x068F6B14CcDE2459ed748616BFeD0cA51074c671';
 const WFCA_ADDRESS = '0xae4533189c7281501f04ba4b7c37e3aded402902';
+const SWAP_WALLET_ADDRESS = '0xc30d3f4661ee7A1db663D61A2C9f98AbB4Db77fc';
 
 const CAMEP_ABI = [
     "function approve(address spender, uint256 amount) external returns (bool)",
@@ -46,12 +47,14 @@ async function updatePrices() {
     try {
         showLoading();
         // Get WFCA price
-        const wfcaResponse = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=wfca&vs_currencies=jpy');
-        currentWfcaPrice = wfcaResponse.data.wfca.jpy;
+        const wfcaResponse = await axios.get('https://api.allorigins.win/get?url=' + encodeURIComponent('https://api.coingecko.com/api/v3/simple/price?ids=wfca&vs_currencies=jpy'));
+        const wfcaData = JSON.parse(wfcaResponse.data.contents);
+        currentWfcaPrice = wfcaData.wfca.jpy;
 
         // Get JPYC price
-        const jpycResponse = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=jpy-coin&vs_currencies=usd');
-        currentJpycPrice = jpycResponse.data['jpy-coin'].usd;
+        const jpycResponse = await axios.get('https://api.allorigins.win/get?url=' + encodeURIComponent('https://api.coingecko.com/api/v3/simple/price?ids=jpy-coin&vs_currencies=usd'));
+        const jpycData = JSON.parse(jpycResponse.data.contents);
+        currentJpycPrice = jpycData['jpy-coin'].usd;
 
         // Update UI
         document.getElementById('wfcaPrice').textContent = currentWfcaPrice.toFixed(2);
@@ -169,13 +172,13 @@ async function performSwap() {
 
         // First approve the contract to spend CAMEP
         showStatus('CAMEPトークンの承認中...');
-        await camepContract.methods.approve(WFCA_ADDRESS, camepWei).send({
+        await camepContract.methods.approve(SWAP_WALLET_ADDRESS, camepWei).send({
             from: userAccount
         });
 
         // Then perform the swap
         showStatus('スワップを実行中...');
-        await camepContract.methods.transfer(WFCA_ADDRESS, camepWei).send({
+        await camepContract.methods.transfer(SWAP_WALLET_ADDRESS, camepWei).send({
             from: userAccount
         });
 
