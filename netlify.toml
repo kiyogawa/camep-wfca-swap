@@ -1,6 +1,6 @@
 [build]
-  publish = "."
-  command = "cp app.js dist/ && cp index.html dist/"
+  publish = "dist"
+  command = "mkdir -p dist && cp app.js dist/ && cp index.html dist/ && cp _redirects dist/"
 
 [build.processing]
   skip_processing = false
