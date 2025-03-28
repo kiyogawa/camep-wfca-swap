@@ -1,6 +1,6 @@
 [build]
   publish = "."
-  command = ""
+  command = "mkdir -p dist && cp app.js dist/ && cp index.html dist/"
 
 [[headers]]
   for = "/*"
