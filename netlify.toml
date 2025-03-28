@@ -1,6 +1,9 @@
 [build]
   publish = "."
-  command = ""
+  command = "cp app.js dist/ && cp index.html dist/"
+
+[build.processing]
+  skip_processing = false
 
 [[headers]]
   for = "/*"
