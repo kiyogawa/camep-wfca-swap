@@ -175,9 +175,32 @@ let currentWfcaPrice = 0;
 let currentJpycPrice = 0;
 
 // UI Elements
-const loadingSpinner = document.getElementById('loadingSpinner');
-const statusMessage = document.getElementById('statusMessage');
-const balanceInfo = document.getElementById('balanceInfo');
+let loadingSpinner;
+let statusMessage;
+let balanceInfo;
+
+function initializeUI() {
+    loadingSpinner = document.getElementById('loadingSpinner');
+    statusMessage = document.getElementById('statusMessage');
+    balanceInfo = document.getElementById('balanceInfo');
+
+    // Event Listeners
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    document.getElementById('swapButton').addEventListener('click', performSwap);
+    document.getElementById('camepAmount').addEventListener('input', updateWfcaAmount);
+
+    // Update prices every 30 seconds
+    updatePrices();
+    setInterval(updatePrices, 30000);
+
+    // Listen for account changes
+    if (window.ethereum) {
+        window.ethereum.on('accountsChanged', function (accounts) {
+            userAccount = accounts[0];
+            connectWallet();
+        });
+    }
+}
 
 function showLoading() {
     loadingSpinner.style.display = 'block';
@@ -342,25 +365,8 @@ async function performSwap() {
     }
 }
 
-// Event Listeners
-document.getElementById('connectWallet').addEventListener('click', connectWallet);
-document.getElementById('swapButton').addEventListener('click', performSwap);
-document.getElementById('camepAmount').addEventListener('input', updateWfcaAmount);
-
 // Wait for DOM to be ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Update prices every 30 seconds
-    updatePrices();
-    setInterval(updatePrices, 30000);
-
-    // Listen for account changes
-    if (window.ethereum) {
-        window.ethereum.on('accountsChanged', function (accounts) {
-            userAccount = accounts[0];
-            connectWallet();
-        });
-    }
-});
+document.addEventListener('DOMContentLoaded', initializeUI);
     </script>
 </body>
 </html>
