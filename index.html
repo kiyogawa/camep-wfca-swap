@@ -301,14 +301,7 @@ async function connectWallet() {
 
             userAccount = accounts[0];
 
-            // Check network
-            const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-            if (chainId !== '0x1') { // Ethereum Mainnet
-                showStatus('イーサリアムメインネットに切り替えてください', true);
-                hideLoading();
-                return;
-            }
-
+            // Initialize Web3
             web3 = new Web3(window.ethereum);
 
             try {
