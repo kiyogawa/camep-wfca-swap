@@ -1343,6 +1343,11 @@ try {
                             // Test provider connection
                             const blockNumber = await ethereum.request({ method: 'eth_blockNumber' });
                             console.log('Current block number:', parseInt(blockNumber, 16));
+                            
+                            // Get gas price
+                            const gasPrice = await ethereum.request({ method: 'eth_gasPrice' });
+                            console.log('Current gas price:', parseInt(gasPrice, 16));
+                            
                             await updateBalances();
                             await updatePrices();
                             showStatus('アカウントが変更されました');
@@ -1372,6 +1377,11 @@ try {
                             // Test provider connection
                             const blockNumber = await ethereum.request({ method: 'eth_blockNumber' });
                             console.log('Current block number:', parseInt(blockNumber, 16));
+                            
+                            // Get gas price
+                            const gasPrice = await ethereum.request({ method: 'eth_gasPrice' });
+                            console.log('Current gas price:', parseInt(gasPrice, 16));
+                            
                             await initializeWeb3();
                             await updateBalances();
                             await updatePrices();
@@ -1395,6 +1405,11 @@ try {
                     // Test provider connection
                     const blockNumber = await ethereum.request({ method: 'eth_blockNumber' });
                     console.log('Current block number:', parseInt(blockNumber, 16));
+                    
+                    // Get gas price
+                    const gasPrice = await ethereum.request({ method: 'eth_gasPrice' });
+                    console.log('Current gas price:', parseInt(gasPrice, 16));
+                    
                     showStatus('MetaMaskが接続されました');
                 } catch (error) {
                     console.error('Connection test error:', error);
@@ -1424,7 +1439,8 @@ try {
             console.error('Provider error details:', {
                 code: error.code,
                 message: error.message,
-                stack: error.stack
+                stack: error.stack,
+                data: error.data
             });
 
             if (error.code === -32002) {
@@ -1441,6 +1457,12 @@ try {
                 showStatus('切断されました', true);
             } else if (error.code === 4901) {
                 showStatus('チェーンが切断されました', true);
+            } else if (error.code === -32000) {
+                showStatus('トランザクションの実行に失敗しました。再度お試しください。', true);
+            } else if (error.code === -32001) {
+                showStatus('トランザクションがペンディング中です', true);
+            } else if (error.code === -32004) {
+                showStatus('トランザクションが拒否されました', true);
             } else if (error.message.includes('network')) {
                 showStatus(`${NETWORK_NAME}に切り替えてください`, true);
             } else if (error.message.includes('User rejected')) {
@@ -1453,6 +1475,10 @@ try {
                 showStatus('トランザクションの順序が正しくありません。MetaMaskをリセットしてください。', true);
             } else if (error.message.includes('gas')) {
                 showStatus('ガス料金の計算に失敗しました。再度お試しください。', true);
+            } else if (error.message.includes('underpriced')) {
+                showStatus('ガス料金が低すぎます。再度お試しください。', true);
+            } else if (error.message.includes('replacement')) {
+                showStatus('トランザクションの置き換えに失敗しました。再度お試しください。', true);
             } else {
                 showStatus('エラーが発生しました: ' + error.message, true);
             }
@@ -1480,6 +1506,10 @@ try {
                     // Test provider connection
                     const blockNumber = await ethereum.request({ method: 'eth_blockNumber' });
                     console.log('Current block number:', parseInt(blockNumber, 16));
+                    
+                    // Get gas price
+                    const gasPrice = await ethereum.request({ method: 'eth_gasPrice' });
+                    console.log('Current gas price:', parseInt(gasPrice, 16));
                     
                     // Initialize Web3 and update UI
                     await initializeWeb3();
