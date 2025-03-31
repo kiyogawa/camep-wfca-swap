@@ -273,23 +273,21 @@ let loadingSpinner;
 let statusMessage;
 let balanceInfo;
 
-function initializeWeb3() {
-    return new Promise((resolve, reject) => {
-        // Check if Web3 has been injected by MetaMask
-        if (typeof web3 !== 'undefined') {
-            web3 = new Web3(web3.currentProvider);
-        } else {
-            reject(new Error('MetaMaskをインストールしてください'));
-            return;
-        }
-
-        // Get accounts
-        web3.eth.getAccounts((error, accounts) => {
-            if (error) {
-                reject(error);
+async function initializeWeb3() {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Check if MetaMask is installed
+            if (typeof window.ethereum === 'undefined') {
+                reject(new Error('MetaMaskをインストールしてください'));
                 return;
             }
 
+            // Request account access
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            web3 = new Web3(window.ethereum);
+
+            // Get accounts
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
             if (!accounts || accounts.length === 0) {
                 reject(new Error('アカウントが見つかりません'));
                 return;
@@ -299,30 +297,28 @@ function initializeWeb3() {
             console.log('Connected account:', userAccount);
 
             // Get network ID
-            web3.version.getNetwork((error, networkId) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
+            const networkId = await window.ethereum.request({ method: 'net_version' });
+            console.log('Current network ID:', networkId);
 
-                console.log('Current network ID:', networkId);
-                if (parseInt(networkId) !== NETWORK_ID) {
-                    reject(new Error(`${NETWORK_NAME}に切り替えてください`));
-                    return;
-                }
+            if (parseInt(networkId) !== NETWORK_ID) {
+                reject(new Error(`${NETWORK_NAME}に切り替えてください`));
+                return;
+            }
 
-                // Initialize contracts
-                try {
-                    camepContract = web3.eth.contract(CAMEP_ABI).at(CAMEP_ADDRESS);
-                    wfcaContract = web3.eth.contract(WFCA_ABI).at(WFCA_ADDRESS);
-                    swapContract = web3.eth.contract(SWAP_CONTRACT_ABI).at(SWAP_CONTRACT_ADDRESS);
-                    resolve(true);
-                } catch (error) {
-                    console.error('Contract initialization error:', error);
-                    reject(new Error('コントラクトの初期化に失敗しました'));
-                }
-            });
-        });
+            // Initialize contracts
+            try {
+                camepContract = web3.eth.contract(CAMEP_ABI).at(CAMEP_ADDRESS);
+                wfcaContract = web3.eth.contract(WFCA_ABI).at(WFCA_ADDRESS);
+                swapContract = web3.eth.contract(SWAP_CONTRACT_ABI).at(SWAP_CONTRACT_ADDRESS);
+                resolve(true);
+            } catch (error) {
+                console.error('Contract initialization error:', error);
+                reject(new Error('コントラクトの初期化に失敗しました'));
+            }
+        } catch (error) {
+            console.error('MetaMask connection error:', error);
+            reject(new Error('ウォレット接続が拒否されました'));
+        }
     });
 }
 
