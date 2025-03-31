@@ -11,28 +11,38 @@ let isMetaMaskInitialized = false;
 let isMetaMaskDetectionComplete = false;
 
 // MetaMaskの初期化イベントを監視
-window.addEventListener('ethereum#initialized', () => {
-    console.log('MetaMask initialized event received');
+if (typeof window.ethereum !== 'undefined') {
+    console.log('MetaMask detected immediately');
     isMetaMaskInitialized = true;
-    window.ethereum = window.ethereum;
-    if (!isMetaMaskDetectionComplete) {
-        isMetaMaskDetectionComplete = true;
-        initializeMetaMask().catch(error => {
-            console.error('MetaMask initialization error:', error);
-            showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
-        });
-    }
-}, { once: true });
+    isMetaMaskDetectionComplete = true;
+    initializeMetaMask().catch(error => {
+        console.error('MetaMask initialization error:', error);
+        showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
+    });
+} else {
+    window.addEventListener('ethereum#initialized', () => {
+        console.log('MetaMask initialized event received');
+        isMetaMaskInitialized = true;
+        window.ethereum = window.ethereum;
+        if (!isMetaMaskDetectionComplete) {
+            isMetaMaskDetectionComplete = true;
+            initializeMetaMask().catch(error => {
+                console.error('MetaMask initialization error:', error);
+                showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
+            });
+        }
+    }, { once: true });
 
-// 3秒後にMetaMaskが見つからない場合は初期化完了とみなす
-setTimeout(() => {
-    if (!isMetaMaskInitialized && !isMetaMaskDetectionComplete) {
-        console.log('MetaMask not found after timeout');
-        isMetaMaskDetectionComplete = true;
-        showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
-        window.dispatchEvent(new Event('ethereum#initialized'));
-    }
-}, 3000);
+    // 3秒後にMetaMaskが見つからない場合は初期化完了とみなす
+    setTimeout(() => {
+        if (!isMetaMaskInitialized && !isMetaMaskDetectionComplete) {
+            console.log('MetaMask not found after timeout');
+            isMetaMaskDetectionComplete = true;
+            showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
+            window.dispatchEvent(new Event('ethereum#initialized'));
+        }
+    }, 3000);
+}
 
 // MetaMaskの状態を監視
 function monitorMetaMaskState() {
@@ -43,6 +53,9 @@ function monitorMetaMaskState() {
             if (chainId !== REQUIRED_CHAIN_ID) {
                 showStatus(`${NETWORK_NAME}に切り替えてください`, true);
                 resetState();
+                const connectButton = document.getElementById('connectWallet');
+                connectButton.textContent = 'MetaMaskに接続';
+                connectButton.disabled = false;
             }
         });
 
@@ -52,13 +65,35 @@ function monitorMetaMaskState() {
             if (accounts.length === 0) {
                 showStatus('ウォレットが切断されました', true);
                 resetState();
+                const connectButton = document.getElementById('connectWallet');
+                connectButton.textContent = 'MetaMaskに接続';
+                connectButton.disabled = false;
+            } else {
+                userAccount = accounts[0];
+                await updateBalances();
             }
+        });
+
+        // 接続状態を監視
+        window.ethereum.on('connect', () => {
+            console.log('MetaMask connected');
+        });
+
+        window.ethereum.on('disconnect', () => {
+            console.log('MetaMask disconnected');
+            showStatus('MetaMaskが切断されました', true);
+            resetState();
+            const connectButton = document.getElementById('connectWallet');
+            connectButton.textContent = 'MetaMaskに接続';
+            connectButton.disabled = false;
         });
     }
 }
 
 // 初期化時にMetaMaskの状態監視を開始
-monitorMetaMaskState();
+if (typeof window.ethereum !== 'undefined') {
+    monitorMetaMaskState();
+}
 
 // MetaMaskのイベントリスナーを設定
 function setupMetaMaskListeners(ethereum, connectButton) {
