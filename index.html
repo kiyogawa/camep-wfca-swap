@@ -875,8 +875,12 @@ connectButton.addEventListener('click', async (e) => {
     
     console.log('Connect button clicked');
     connectButton.disabled = true;
+    showStatus('MetaMaskに接続中...');
     
     try {
+        if (!window.ethereum) {
+            throw new Error('MetaMaskをインストールしてください');
+        }
         await connectWallet();
     } catch (error) {
         console.error('Connect button error:', error);
@@ -885,20 +889,7 @@ connectButton.addEventListener('click', async (e) => {
     }
 });
 
-// Deposit button click handler with debounce
-const debouncedDeposit = debounce(async () => {
-    try {
-        console.log('Executing deposit...');
-        await performDeposit();
-    } catch (error) {
-        console.error('Deposit error:', error);
-        showStatus('入金エラー: ' + error.message, true);
-    } finally {
-        const depositInput = document.getElementById('depositAmount');
-        depositButton.disabled = !depositInput.value || isNaN(depositInput.value) || parseFloat(depositInput.value) <= 0;
-    }
-}, 500);
-
+// Deposit button click handler
 depositButton.addEventListener('click', async (e) => {
     e.preventDefault();
     if (depositButton.disabled) {
@@ -908,23 +899,26 @@ depositButton.addEventListener('click', async (e) => {
     
     console.log('Deposit button clicked');
     depositButton.disabled = true;
-    await debouncedDeposit();
+    showStatus('WFCAの入金を準備中...');
+    
+    try {
+        if (!window.ethereum) {
+            throw new Error('MetaMaskをインストールしてください');
+        }
+        if (!userAccount) {
+            throw new Error('ウォレットが接続されていません');
+        }
+        await performDeposit();
+    } catch (error) {
+        console.error('Deposit error:', error);
+        showStatus('入金エラー: ' + error.message, true);
+    } finally {
+        const depositInput = document.getElementById('depositAmount');
+        depositButton.disabled = !depositInput.value || isNaN(depositInput.value) || parseFloat(depositInput.value) <= 0;
+    }
 });
 
-// Swap button click handler with debounce
-const debouncedSwap = debounce(async () => {
-    try {
-        console.log('Executing swap...');
-        await performSwap();
-    } catch (error) {
-        console.error('Swap error:', error);
-        showStatus('スワップエラー: ' + error.message, true);
-    } finally {
-        const camepInput = document.getElementById('camepAmount');
-        swapButton.disabled = !camepInput.value || isNaN(camepInput.value) || parseFloat(camepInput.value) <= 0;
-    }
-}, 500);
-
+// Swap button click handler
 swapButton.addEventListener('click', async (e) => {
     e.preventDefault();
     if (swapButton.disabled) {
@@ -934,7 +928,23 @@ swapButton.addEventListener('click', async (e) => {
     
     console.log('Swap button clicked');
     swapButton.disabled = true;
-    await debouncedSwap();
+    showStatus('スワップを準備中...');
+    
+    try {
+        if (!window.ethereum) {
+            throw new Error('MetaMaskをインストールしてください');
+        }
+        if (!userAccount) {
+            throw new Error('ウォレットが接続されていません');
+        }
+        await performSwap();
+    } catch (error) {
+        console.error('Swap error:', error);
+        showStatus('スワップエラー: ' + error.message, true);
+    } finally {
+        const camepInput = document.getElementById('camepAmount');
+        swapButton.disabled = !camepInput.value || isNaN(camepInput.value) || parseFloat(camepInput.value) <= 0;
+    }
 });
     
 // CAMEP数量の入力イベント
