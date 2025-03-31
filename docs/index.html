@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAMEP-WFCA Swap</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@0.20.7/dist/web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .swap-box {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .price-info {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .balance-info {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+        .loading {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            display: block;
+        }
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            display: block;
+        }
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CAMEP-WFCA Swap</h1>
+        
+        <div class="price-info">
+            <p>WFCA現在価格: <span id="wfcaPrice">読み込み中...</span> JPY</p>
+            <p>JPYC現在価格: <span id="jpycPrice">読み込み中...</span> USD</p>
+        </div>
+
+        <div class="balance-info" id="balanceInfo">
+            <p>CAMEPの残高: <span id="camepBalance">0</span></p>
+            <p>WFCAの残高: <span id="wfcaBalance">0</span></p>
+        </div>
+
+        <div class="swap-box">
+            <div class="input-group">
+                <label>CAMEP数量:</label>
+                <input type="number" id="camepAmount" placeholder="CAMEP数量を入力" min="0" step="any">
+            </div>
+
+            <div class="input-group">
+                <label>WFCA数量 (概算):</label>
+                <input type="number" id="wfcaAmount" readonly>
+            </div>
+
+            <div class="input-group">
+                <label>WFCA入金数量:</label>
+                <input type="number" id="depositAmount" placeholder="WFCA入金数量を入力" min="0" step="any">
+            </div>
+
+            <button id="connectWallet">MetaMaskに接続</button>
+            <button id="depositButton" disabled>WFCAを入金</button>
+            <button id="swapButton" disabled>スワップを実行</button>
+            
+            <div class="loading-spinner" id="loadingSpinner"></div>
+            <div class="status" id="statusMessage"></div>
+        </div>
+    </div>
+
+    <script>
+// Contract addresses and ABIs
+const NETWORK_ID = 1; // Ethereum Mainnet
+const NETWORK_NAME = 'Ethereum Mainnet';
+const REQUIRED_CHAIN_ID = '0x1';
+
+// Mainnet contract addresses
+const CAMEP_ADDRESS = '0x068F6B14CcDE2459ed748616BFeD0cA51074c671';
+const WFCA_ADDRESS = '0xae4533189c7281501f04ba4b7c37e3aded402902';
+const SWAP_CONTRACT_ADDRESS = '0xBa2e8794Ca2C7e80C4dcB29Ae07A681172e52b2B';
+
+const TOKEN_ABI = [
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "name",
+        "outputs": [{"name": "", "type": "string"}],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [{"name": "_spender", "type": "address"}, {"name": "_value", "type": "uint256"}],
+        "name": "approve",
+        "outputs": [{"name": "", "type": "bool"}],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "totalSupply",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [{"name": "_from", "type": "address"}, {"name": "_to", "type": "address"}, {"name": "_value", "type": "uint256"}],
+        "name": "transferFrom",
+        "outputs": [{"name": "", "type": "bool"}],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [{"name": "", "type": "uint8"}],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [{"name": "_owner", "type": "address"}],
+        "name": "balanceOf",
+        "outputs": [{"name": "balance", "type": "uint256"}],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [{"name": "", "type": "string"}],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [{"name": "_to", "type": "address"}, {"name": "_value", "type": "uint256"}],
+        "name": "transfer",
+        "outputs": [{"name": "", "type": "bool"}],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [{"name": "_owner", "type": "address"}, {"name": "_spender", "type": "address"}],
+        "name": "allowance",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {"indexed": true, "name": "owner", "type": "address"},
+            {"indexed": true, "name": "spender", "type": "address"},
+            {"indexed": false, "name": "value", "type": "uint256"}
+        ],
+        "name": "Approval",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {"indexed": true, "name": "from", "type": "address"},
+            {"indexed": true, "name": "to", "type": "address"},
+            {"indexed": false, "name": "value", "type": "uint256"}
+        ],
+        "name": "Transfer",
+        "type": "event"
+    }
+];
+
+const SWAP_CONTRACT_ABI = [{"inputs":[{"internalType":"address","name":"_camepToken","type":"address"},{"internalType":"address","name":"_wfcaToken","type":"address"},{"internalType":"uint256","name":"_initialWfcaPrice","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"camepAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"wfcaAmount","type":"uint256"}],"name":"SwapExecuted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"depositor","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"WfcaDeposited","type":"event"},{"inputs":[{"internalType":"uint256","name":"camepAmount","type":"uint256"}],"name":"calculateWfcaAmount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"camepToken","outputs":[{"internalType":"contract IERC20","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"depositWfca","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_newPrice","type":"uint256"}],"name":"setWfcaPrice","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"camepAmount","type":"uint256"}],"name":"swap","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"wfcaPriceInJpy","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"wfcaToken","outputs":[{"internalType":"contract IERC20","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"withdrawCamep","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"withdrawWfca","outputs":[],"stateMutability":"nonpayable","type":"function"}];
+
+const CAMEP_ABI = TOKEN_ABI;
+const WFCA_ABI = TOKEN_ABI;
+
+// Global variables
+let web3;
+let swapContract;
+let userAccount;
+let camepContract;
+let wfcaContract;
+
+// Price variables
+let currentWfcaPrice = 0;
+let currentJpycPrice = 0;
+
+// UI Elements
+let loadingSpinner;
+let statusMessage;
+let balanceInfo;
+
+function initializeWeb3() {
+    return new Promise((resolve, reject) => {
+        // Check if Web3 has been injected by MetaMask
+        if (typeof web3 !== 'undefined') {
+            web3 = new Web3(web3.currentProvider);
+        } else {
+            web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
+        }
+
+        console.log('Web3 version:', web3.version.api);
+
+        // Get accounts
+        web3.eth.getAccounts((error, accounts) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            if (!accounts || accounts.length === 0) {
+                reject(new Error('アカウントが見つかりません'));
+                return;
+            }
+
+            userAccount = accounts[0];
+            console.log('Connected account:', userAccount);
+
+            // Get network ID
+            web3.version.getNetwork((error, networkId) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+
+                console.log('Current network ID:', networkId);
+                if (parseInt(networkId) !== NETWORK_ID) {
+                    reject(new Error(`${NETWORK_NAME}に切り替えてください`));
+                    return;
+                }
+
+                // Initialize contracts
+                try {
+                    camepContract = web3.eth.contract(CAMEP_ABI).at(CAMEP_ADDRESS);
+                    wfcaContract = web3.eth.contract(WFCA_ABI).at(WFCA_ADDRESS);
+                    swapContract = web3.eth.contract(SWAP_CONTRACT_ABI).at(SWAP_CONTRACT_ADDRESS);
+
+                    // Test contract methods
+                    Promise.all([
+                        new Promise((resolve, reject) => {
+                            camepContract.symbol((error, result) => {
+                                if (error) reject(error);
+                                else resolve(result);
+                            });
+                        }),
+                        new Promise((resolve, reject) => {
+                            wfcaContract.symbol((error, result) => {
+                                if (error) reject(error);
+                                else resolve(result);
+                            });
+                        })
+                    ]).then(([camepSymbol, wfcaSymbol]) => {
+                        console.log('Contract symbols:', { camepSymbol, wfcaSymbol });
+                        resolve(true);
+                    }).catch(error => {
+                        console.error('Contract test error:', error);
+                        reject(new Error('コントラクトの初期化に失敗しました'));
+                    });
+                } catch (error) {
+                    console.error('Contract initialization error:', error);
+                    reject(new Error('コントラクトの初期化に失敗しました'));
+                }
+            });
+        });
+    });
+}
+
+function initializeUI() {
+    loadingSpinner = document.getElementById('loadingSpinner');
+    statusMessage = document.getElementById('statusMessage');
+    balanceInfo = document.getElementById('balanceInfo');
+
+    // Event Listeners
+    const camepInput = document.getElementById('camepAmount');
+    const depositInput = document.getElementById('depositAmount');
+
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    document.getElementById('depositButton').addEventListener('click', performDeposit);
+    document.getElementById('swapButton').addEventListener('click', performSwap);
+    
+    // CAMEP数量の入力イベント
+    camepInput.addEventListener('input', function(e) {
+        console.log('CAMEP input:', e.target.value);
+        updateWfcaAmount();
+    });
+
+    // WFCA入金数量の入力イベント
+    depositInput.addEventListener('input', function(e) {
+        console.log('Deposit input:', e.target.value);
+        document.getElementById('depositButton').disabled = !e.target.value;
+    });
+
+    // Initialize Web3 if already connected
+    if (typeof web3 !== 'undefined') {
+        initializeWeb3().then(() => {
+            // Update prices every 30 seconds after successful initialization
+            updatePrices();
+            setInterval(updatePrices, 30000);
+        }).catch(error => {
+            console.error('Initial Web3 setup error:', error);
+        });
+    }
+
+    // Listen for account changes
+    if (window.ethereum) {
+        window.ethereum.on('accountsChanged', function (accounts) {
+            userAccount = accounts[0];
+            connectWallet();
+        });
+    }
+}
+
+function showLoading() {
+    loadingSpinner.style.display = 'block';
+    document.querySelector('.swap-box').classList.add('loading');
+}
+
+function hideLoading() {
+    loadingSpinner.style.display = 'none';
+    document.querySelector('.swap-box').classList.remove('loading');
+}
+
+function showStatus(message, isError = false) {
+    statusMessage.textContent = message;
+    statusMessage.className = 'status ' + (isError ? 'error' : 'success');
+}
+
+function updatePrices() {
+    if (!swapContract) {
+        document.getElementById('wfcaPrice').textContent = '未接続';
+        document.getElementById('jpycPrice').textContent = '未接続';
+        return;
+    }
+
+    showLoading();
+
+    // Get WFCA price from contract
+    swapContract.wfcaPriceInJpy((error, result) => {
+        if (error) {
+            console.error('WFCA価格取得エラー:', error);
+            document.getElementById('wfcaPrice').textContent = '取得失敗';
+            currentWfcaPrice = 12.83; // Use fallback price for testing
+        } else {
+            try {
+                currentWfcaPrice = Number(result) / 1000000; // Convert from 6 decimals
+                document.getElementById('wfcaPrice').textContent = currentWfcaPrice.toFixed(2);
+            } catch (parseError) {
+                console.error('WFCA価格変換エラー:', parseError);
+                document.getElementById('wfcaPrice').textContent = '取得失敗';
+                currentWfcaPrice = 12.83; // Use fallback price for testing
+            }
+        }
+
+        // Get JPYC price from CoinGecko via proxy
+        fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://api.coingecko.com/api/v3/simple/price?ids=jpycoin&vs_currencies=usd'))
+            .then(response => response.json())
+            .then(jpycData => {
+                try {
+                    const data = JSON.parse(jpycData.contents);
+                    currentJpycPrice = data.jpycoin.usd;
+                    document.getElementById('jpycPrice').textContent = currentJpycPrice.toFixed(4);
+                } catch (parseError) {
+                    console.error('JPYC価格変換エラー:', parseError);
+                    document.getElementById('jpycPrice').textContent = '取得失敗';
+                    currentJpycPrice = 0.0066; // Use fallback price for testing
+                }
+            })
+            .catch(jpycError => {
+                console.error('JPYC価格取得エラー:', jpycError);
+                document.getElementById('jpycPrice').textContent = '取得失敗';
+                currentJpycPrice = 0.0066; // Use fallback price for testing
+            })
+            .finally(() => {
+                // Update WFCA amount if CAMEP amount is entered
+                if (currentWfcaPrice > 0) {
+                    updateWfcaAmount();
+                }
+                hideLoading();
+            });
+    });
+}
+
+function updateWfcaAmount() {
+    try {
+        const camepInput = document.getElementById('camepAmount');
+        const wfcaInput = document.getElementById('wfcaAmount');
+        const swapButton = document.getElementById('swapButton');
+        const camepAmount = parseFloat(camepInput.value || '0');
+
+        console.log('Updating WFCA amount:', {
+            camepAmount,
+            currentWfcaPrice
+        });
+
+        if (camepAmount > 0 && currentWfcaPrice > 0) {
+            // 1 CAMEP = 100,000 JPY worth of WFCA
+            const jpyValue = camepAmount * 100000;
+            const wfcaAmount = jpyValue / currentWfcaPrice;
+            
+            // 計算結果を表示
+            wfcaInput.value = wfcaAmount.toFixed(8);
+            swapButton.disabled = false;
+
+            console.log('計算結果:', {
+                camepAmount,
+                jpyValue,
+                currentWfcaPrice,
+                wfcaAmount
+            });
+        } else {
+            wfcaInput.value = '';
+            swapButton.disabled = true;
+            
+            console.log('計算スキップ:', {
+                reason: camepAmount <= 0 ? 'CAMEP数量が0以下' : 'WFCA価格が未設定'
+            });
+        }
+    } catch (error) {
+        console.error('WFCA数量計算エラー:', error);
+        document.getElementById('wfcaAmount').value = '';
+        swapButton.disabled = true;
+    }
+}
+
+function updateBalances() {
+    if (!userAccount || !camepContract || !wfcaContract) return;
+
+    Promise.all([
+        new Promise((resolve, reject) => {
+            camepContract.balanceOf(userAccount, (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            });
+        }),
+        new Promise((resolve, reject) => {
+            wfcaContract.balanceOf(userAccount, (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            });
+        })
+    ]).then(([camepBalance, wfcaBalance]) => {
+        document.getElementById('camepBalance').textContent = web3.fromWei(camepBalance);
+        document.getElementById('wfcaBalance').textContent = web3.fromWei(wfcaBalance);
+        balanceInfo.style.display = 'block';
+    }).catch(error => {
+        console.error('Error updating balances:', error);
+        showStatus('残高の取得に失敗しました', true);
+    });
+}
+
+async function connectWallet() {
+    try {
+        showLoading();
+        showStatus('MetaMaskに接続中...');
+
+        await initializeWeb3();
+
+        document.getElementById('connectWallet').textContent = 'ウォレット接続済み';
+        updateWfcaAmount();
+        await updateBalances();
+        await updatePrices();
+
+        showStatus('MetaMaskの接続に成功しました！');
+
+        // Listen for network changes
+        window.ethereum.on('chainChanged', async (chainId) => {
+            if (chainId !== REQUIRED_CHAIN_ID) {
+                showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                document.getElementById('connectWallet').textContent = 'MetaMaskに接続';
+                resetState();
+            } else {
+                await initializeWeb3();
+                await updateBalances();
+                await updatePrices();
+            }
+        });
+
+        // Listen for account changes
+        window.ethereum.on('accountsChanged', async (accounts) => {
+            userAccount = accounts[0];
+            await updateBalances();
+        });
+
+    } catch (error) {
+        console.error('Wallet connection error:', error);
+        if (error.code === 4001) {
+            showStatus('ウォレット接続が拒否されました', true);
+        } else if (error.code === -32002) {
+            showStatus('MetaMaskで承認を待っています...', true);
+        } else if (error.message.includes('already pending')) {
+            showStatus('MetaMaskで承認を待っています...', true);
+        } else if (error.message.includes('getCode')) {
+            showStatus('コントラクトの読み込みに失敗しました。ネットワーク接続を確認してください。', true);
+        } else {
+            showStatus('ウォレット接続エラー: ' + error.message, true);
+        }
+    } finally {
+        hideLoading();
+    }
+}
+
+function resetState() {
+    userAccount = null;
+    camepContract = null;
+    wfcaContract = null;
+    swapContract = null;
+    currentWfcaPrice = 0;
+    currentJpycPrice = 0;
+    document.getElementById('wfcaPrice').textContent = '未接続';
+    document.getElementById('jpycPrice').textContent = '未接続';
+    balanceInfo.style.display = 'none';
+}
+
+function performDeposit() {
+    showLoading();
+    const depositAmount = document.getElementById('depositAmount').value;
+
+    if (!depositAmount) {
+        showStatus('有効な金額を入力してください', true);
+        hideLoading();
+        return;
+    }
+
+    // Convert amount to wei
+    const depositWei = web3.toWei(depositAmount.toString());
+
+    // First check if user has enough WFCA
+    wfcaContract.balanceOf(userAccount, (error, userWfcaBalance) => {
+        if (error) {
+            console.error('残高取得エラー:', error);
+            showStatus('残高の取得に失敗しました', true);
+            hideLoading();
+            return;
+        }
+
+        if (userWfcaBalance.lessThan(depositWei)) {
+            showStatus('WFCA残高が不足しています', true);
+            hideLoading();
+            return;
+        }
+
+        // First approve WFCA transfer
+        showStatus('WFCAトークンの承認中...');
+        wfcaContract.approve(SWAP_CONTRACT_ADDRESS, depositWei, { from: userAccount }, (error) => {
+            if (error) {
+                console.error('承認エラー:', error);
+                showStatus('トークンの承認に失敗しました', true);
+                hideLoading();
+                return;
+            }
+
+            // Then execute deposit
+            showStatus('WFCAを入金中...');
+            swapContract.depositWfca(depositWei, { from: userAccount }, (error) => {
+                if (error) {
+                    console.error('入金エラー:', error);
+                    showStatus('入金に失敗しました', true);
+                    hideLoading();
+                    return;
+                }
+
+                showStatus('WFCAの入金が完了しました！');
+                document.getElementById('depositAmount').value = '';
+                document.getElementById('depositButton').disabled = true;
+                updateBalances();
+                hideLoading();
+            });
+        });
+    });
+}
+
+function performSwap() {
+    showLoading();
+    const camepAmount = document.getElementById('camepAmount').value;
+
+    if (!camepAmount) {
+        showStatus('有効な金額を入力してください', true);
+        hideLoading();
+        return;
+    }
+
+    // Convert amount to wei
+    const camepWei = web3.toWei(camepAmount.toString());
+
+    // First check if user has enough CAMEP
+    camepContract.balanceOf(userAccount, (error, userCamepBalance) => {
+        if (error) {
+            console.error('残高取得エラー:', error);
+            showStatus('残高の取得に失敗しました', true);
+            hideLoading();
+            return;
+        }
+
+        if (userCamepBalance.lessThan(camepWei)) {
+            showStatus('CAMEP残高が不足しています', true);
+            hideLoading();
+            return;
+        }
+
+        // First approve CAMEP transfer
+        showStatus('CAMEPトークンの承認中...');
+        camepContract.approve(SWAP_CONTRACT_ADDRESS, camepWei, { from: userAccount }, (error) => {
+            if (error) {
+                console.error('承認エラー:', error);
+                showStatus('トークンの承認に失敗しました', true);
+                hideLoading();
+                return;
+            }
+
+            // Then execute swap
+            showStatus('スワップを実行中...');
+            swapContract.swap(camepWei, { from: userAccount }, (error) => {
+                if (error) {
+                    console.error('スワップエラー:', error);
+                    showStatus('スワップに失敗しました', true);
+                    hideLoading();
+                    return;
+                }
+
+                showStatus('スワップが完了しました！');
+                updateBalances();
+                hideLoading();
+            });
+        });
+    });
+}
+
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', initializeUI);
+    </script>
+</body>
+</html>
