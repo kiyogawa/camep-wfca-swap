@@ -276,21 +276,33 @@ let balanceInfo;
 function detectEthereum() {
     return new Promise((resolve) => {
         if (window.ethereum) {
+            console.log('MetaMask detected immediately');
             resolve(window.ethereum);
+            return;
         }
 
+        console.log('Waiting for MetaMask...');
         let tries = 0;
         const interval = setInterval(() => {
             if (window.ethereum) {
+                console.log('MetaMask detected after waiting');
                 clearInterval(interval);
                 resolve(window.ethereum);
+                return;
             }
 
-            if (++tries > 50) {
+            if (++tries > 30) {
+                console.log('MetaMask detection timeout');
                 clearInterval(interval);
                 resolve(null);
             }
         }, 100);
+
+        // Also check for window.web3 as fallback
+        if (window.web3 && window.web3.currentProvider) {
+            console.log('Legacy web3 provider detected');
+            resolve(window.web3.currentProvider);
+        }
     });
 }
 
@@ -671,8 +683,12 @@ async function performSwap() {
     }
 }
 
-// Wait for DOM to be ready
-document.addEventListener('DOMContentLoaded', initializeUI);
+// Initialize after DOM and window are fully loaded
+window.addEventListener('load', async () => {
+    console.log('Window loaded, initializing UI...');
+    await initializeUI();
+    console.log('UI initialization complete');
+});
     </script>
 </body>
 </html>
