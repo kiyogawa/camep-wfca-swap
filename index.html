@@ -8,21 +8,27 @@
     <script>
 // MetaMaskの初期化を待つ
 let isMetaMaskInitialized = false;
+let isMetaMaskDetectionComplete = false;
 
 // MetaMaskの初期化イベントを監視
 window.addEventListener('ethereum#initialized', () => {
     console.log('MetaMask initialized event received');
     isMetaMaskInitialized = true;
     window.ethereum = window.ethereum;
-    initializeMetaMask().catch(error => {
-        console.error('MetaMask initialization error:', error);
-    });
+    if (!isMetaMaskDetectionComplete) {
+        isMetaMaskDetectionComplete = true;
+        initializeMetaMask().catch(error => {
+            console.error('MetaMask initialization error:', error);
+            showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
+        });
+    }
 }, { once: true });
 
 // 3秒後にMetaMaskが見つからない場合は初期化完了とみなす
 setTimeout(() => {
-    if (!isMetaMaskInitialized) {
+    if (!isMetaMaskInitialized && !isMetaMaskDetectionComplete) {
         console.log('MetaMask not found after timeout');
+        isMetaMaskDetectionComplete = true;
         window.dispatchEvent(new Event('ethereum#initialized'));
     }
 }, 3000);
@@ -839,10 +845,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Add click event listeners with error handling and debounce
 function debounce(func, wait) {
     let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
+    let isExecuting = false;
+    return async function executedFunction(...args) {
+        if (isExecuting) return;
+        
+        const later = async () => {
             clearTimeout(timeout);
-            func(...args);
+            try {
+                isExecuting = true;
+                await func.apply(this, args);
+            } catch (error) {
+                console.error('Debounced function error:', error);
+            } finally {
+                isExecuting = false;
+            }
         };
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
