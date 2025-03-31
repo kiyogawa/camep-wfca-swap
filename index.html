@@ -11,38 +11,52 @@ let isMetaMaskInitialized = false;
 let isMetaMaskDetectionComplete = false;
 
 // MetaMaskの初期化イベントを監視
-if (typeof window.ethereum !== 'undefined') {
-    console.log('MetaMask detected immediately');
-    isMetaMaskInitialized = true;
-    isMetaMaskDetectionComplete = true;
-    initializeMetaMask().catch(error => {
-        console.error('MetaMask initialization error:', error);
-        showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
-    });
-} else {
-    window.addEventListener('ethereum#initialized', () => {
-        console.log('MetaMask initialized event received');
+async function initializeEthereum() {
+    console.log('Initializing Ethereum...');
+    
+    if (typeof window.ethereum !== 'undefined') {
+        console.log('MetaMask detected immediately');
         isMetaMaskInitialized = true;
-        window.ethereum = window.ethereum;
-        if (!isMetaMaskDetectionComplete) {
-            isMetaMaskDetectionComplete = true;
-            initializeMetaMask().catch(error => {
-                console.error('MetaMask initialization error:', error);
-                showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
-            });
+        isMetaMaskDetectionComplete = true;
+        try {
+            await initializeMetaMask();
+        } catch (error) {
+            console.error('MetaMask initialization error:', error);
+            showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
         }
-    }, { once: true });
+    } else {
+        window.addEventListener('ethereum#initialized', async () => {
+            console.log('MetaMask initialized event received');
+            isMetaMaskInitialized = true;
+            window.ethereum = window.ethereum;
+            if (!isMetaMaskDetectionComplete) {
+                isMetaMaskDetectionComplete = true;
+                try {
+                    await initializeMetaMask();
+                } catch (error) {
+                    console.error('MetaMask initialization error:', error);
+                    showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
+                }
+            }
+        }, { once: true });
 
-    // 3秒後にMetaMaskが見つからない場合は初期化完了とみなす
-    setTimeout(() => {
-        if (!isMetaMaskInitialized && !isMetaMaskDetectionComplete) {
-            console.log('MetaMask not found after timeout');
-            isMetaMaskDetectionComplete = true;
-            showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
-            window.dispatchEvent(new Event('ethereum#initialized'));
-        }
-    }, 3000);
+        // 3秒後にMetaMaskが見つからない場合は初期化完了とみなす
+        setTimeout(() => {
+            if (!isMetaMaskInitialized && !isMetaMaskDetectionComplete) {
+                console.log('MetaMask not found after timeout');
+                isMetaMaskDetectionComplete = true;
+                showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
+                window.dispatchEvent(new Event('ethereum#initialized'));
+            }
+        }, 3000);
+    }
 }
+
+// 初期化を開始
+initializeEthereum().catch(error => {
+    console.error('Ethereum initialization error:', error);
+    showStatus('Ethereumの初期化に失敗しました: ' + error.message, true);
+});
 
 // MetaMaskの状態を監視
 function monitorMetaMaskState() {
@@ -951,13 +965,28 @@ connectButton.addEventListener('click', async (e) => {
             userAccount = accounts[0];
             await updateBalances();
             showStatus('既に接続されています');
+            connectButton.textContent = 'ウォレット接続済み';
             return;
         }
 
+        // Request account access
+        const requestedAccounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        if (!requestedAccounts || requestedAccounts.length === 0) {
+            throw new Error('アカウントが見つかりません');
+        }
+
+        console.log('Connected to account:', requestedAccounts[0]);
+        userAccount = requestedAccounts[0];
         await connectWallet();
     } catch (error) {
         console.error('Connect button error:', error);
-        showStatus('接続エラー: ' + error.message, true);
+        if (error.code === 4001) {
+            showStatus('ウォレット接続が拒否されました', true);
+        } else if (error.code === -32002) {
+            showStatus('MetaMaskで承認を待っています...', true);
+        } else {
+            showStatus('接続エラー: ' + error.message, true);
+        }
         connectButton.disabled = false;
     }
 });
