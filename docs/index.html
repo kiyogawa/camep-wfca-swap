@@ -275,33 +275,46 @@ let balanceInfo;
 
 function detectEthereum() {
     return new Promise((resolve) => {
+        let detected = false;
+
+        // Check for modern MetaMask
         if (window.ethereum) {
-            console.log('MetaMask detected immediately');
+            console.log('Modern MetaMask detected');
+            detected = true;
             resolve(window.ethereum);
             return;
         }
 
-        console.log('Waiting for MetaMask...');
-        let tries = 0;
-        const interval = setInterval(() => {
-            if (window.ethereum) {
-                console.log('MetaMask detected after waiting');
-                clearInterval(interval);
-                resolve(window.ethereum);
-                return;
-            }
-
-            if (++tries > 30) {
-                console.log('MetaMask detection timeout');
-                clearInterval(interval);
-                resolve(null);
-            }
-        }, 100);
-
-        // Also check for window.web3 as fallback
+        // Check for legacy Web3
         if (window.web3 && window.web3.currentProvider) {
-            console.log('Legacy web3 provider detected');
+            console.log('Legacy Web3 provider detected');
+            detected = true;
             resolve(window.web3.currentProvider);
+            return;
+        }
+
+        if (!detected) {
+            console.log('No Web3 provider found, waiting for injection...');
+            let tries = 0;
+            const maxTries = 30;
+            const interval = setInterval(() => {
+                if (window.ethereum) {
+                    console.log('MetaMask detected after waiting');
+                    clearInterval(interval);
+                    resolve(window.ethereum);
+                    return;
+                }
+
+                tries++;
+                console.log(`Waiting for MetaMask... (${tries}/${maxTries})`);
+
+                if (tries >= maxTries) {
+                    console.log('MetaMask detection timeout');
+                    clearInterval(interval);
+                    resolve(null);
+                    showStatus('MetaMaskをインストールしてください', true);
+                }
+            }, 100);
         }
     });
 }
@@ -685,9 +698,19 @@ async function performSwap() {
 
 // Initialize after DOM and window are fully loaded
 window.addEventListener('load', async () => {
-    console.log('Window loaded, initializing UI...');
-    await initializeUI();
-    console.log('UI initialization complete');
+    console.log('Window loaded, checking for Web3 provider...');
+    try {
+        await initializeUI();
+        console.log('UI initialization complete');
+    } catch (error) {
+        console.error('UI initialization failed:', error);
+        showStatus('初期化に失敗しました: ' + error.message, true);
+    }
+});
+
+// Handle MetaMask installation
+window.addEventListener('ethereum#initialized', () => {
+    console.log('MetaMask has been injected');
 });
     </script>
 </body>
