@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CAMEP-WFCA Swap</title>
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -275,10 +275,25 @@ let balanceInfo;
 
 async function initializeWeb3() {
     try {
-        // Check if MetaMask is installed
-        if (!window.ethereum) {
-            throw new Error('MetaMaskをインストールしてください');
-        }
+        // Wait for window.ethereum to be injected
+        await new Promise((resolve) => {
+            if (window.ethereum) {
+                resolve();
+            } else {
+                const checkEthereum = setInterval(() => {
+                    if (window.ethereum) {
+                        clearInterval(checkEthereum);
+                        resolve();
+                    }
+                }, 100);
+                setTimeout(() => {
+                    clearInterval(checkEthereum);
+                    if (!window.ethereum) {
+                        throw new Error('MetaMaskをインストールしてください');
+                    }
+                }, 3000);
+            }
+        });
 
         // Request account access
         try {
