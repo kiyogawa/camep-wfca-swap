@@ -1318,18 +1318,12 @@ try {
                             showStatus('アカウントが変更されました');
                         } catch (error) {
                             console.error('Account update error:', error);
-                            if (error.code === -32002) {
-                                showStatus('MetaMaskで承認を待っています...', true);
-                            } else if (error.message.includes('network')) {
-                                showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-                            } else {
-                                showStatus('アカウント更新エラー: ' + error.message, true);
-                            }
+                            handleProviderError(error);
                         }
                     }
                 } catch (error) {
                     console.error('Account change error:', error);
-                    showStatus('アカウント変更エラー: ' + error.message, true);
+                    handleProviderError(error);
                 }
             });
 
@@ -1353,18 +1347,12 @@ try {
                             showStatus('ネットワークが変更されました');
                         } catch (error) {
                             console.error('Network update error:', error);
-                            if (error.code === -32002) {
-                                showStatus('MetaMaskで承認を待っています...', true);
-                            } else if (error.message.includes('network')) {
-                                showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-                            } else {
-                                showStatus('ネットワーク更新エラー: ' + error.message, true);
-                            }
+                            handleProviderError(error);
                         }
                     }
                 } catch (error) {
                     console.error('Network change error:', error);
-                    showStatus('ネットワーク変更エラー: ' + error.message, true);
+                    handleProviderError(error);
                 }
             });
 
@@ -1378,11 +1366,7 @@ try {
                     showStatus('MetaMaskが接続されました');
                 } catch (error) {
                     console.error('Connection test error:', error);
-                    if (error.code === -32002) {
-                        showStatus('MetaMaskで承認を待っています...', true);
-                    } else {
-                        showStatus('接続テストエラー: ' + error.message, true);
-                    }
+                    handleProviderError(error);
                 }
             });
 
@@ -1399,14 +1383,35 @@ try {
             ethereum.removeAllListeners('error');
             ethereum.on('error', (error) => {
                 console.error('Provider error:', error);
-                if (error.code === -32002) {
-                    showStatus('MetaMaskで承認を待っています...', true);
-                } else if (error.message.includes('network')) {
-                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-                } else {
-                    showStatus('プロバイダーエラー: ' + error.message, true);
-                }
+                handleProviderError(error);
             });
+        };
+
+        // Helper function to handle provider errors
+        const handleProviderError = (error) => {
+            if (error.code === -32002) {
+                showStatus('MetaMaskで承認を待っています...', true);
+            } else if (error.code === -32603) {
+                showStatus('内部エラーが発生しました。再度お試しください。', true);
+            } else if (error.code === 4001) {
+                showStatus('ユーザーによって拒否されました', true);
+            } else if (error.code === 4100) {
+                showStatus('未承認のアカウントです', true);
+            } else if (error.code === 4200) {
+                showStatus('未サポートのメソッドです', true);
+            } else if (error.code === 4900) {
+                showStatus('切断されました', true);
+            } else if (error.code === 4901) {
+                showStatus('チェーンが切断されました', true);
+            } else if (error.message.includes('network')) {
+                showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+            } else if (error.message.includes('User rejected')) {
+                showStatus('ユーザーによって拒否されました', true);
+            } else if (error.message.includes('already pending')) {
+                showStatus('MetaMaskで承認を待っています...', true);
+            } else {
+                showStatus('エラーが発生しました: ' + error.message, true);
+            }
         };
 
         // Set up initial event listeners
@@ -1439,26 +1444,12 @@ try {
                     connectButton.disabled = true;
                 } catch (error) {
                     console.error('Initialization error:', error);
-                    if (error.code === -32002) {
-                        showStatus('MetaMaskで承認を待っています...', true);
-                    } else if (error.message.includes('network')) {
-                        showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-                    } else {
-                        showStatus('初期化エラー: ' + error.message, true);
-                    }
+                    handleProviderError(error);
                 }
             }
         } catch (error) {
             console.error('Account check error:', error);
-            if (error.code === 4001) {
-                showStatus('ウォレット接続が拒否されました', true);
-            } else if (error.code === -32002) {
-                showStatus('MetaMaskで承認を待っています...', true);
-            } else if (error.message.includes('network')) {
-                showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-            } else {
-                showStatus('アカウント確認エラー: ' + error.message, true);
-            }
+            handleProviderError(error);
         }
     } else {
         console.log('MetaMask not found');
@@ -1468,13 +1459,7 @@ try {
 } catch (error) {
     console.error('Initial setup error:', error);
     connectButton.disabled = true;
-    if (error.code === -32002) {
-        showStatus('MetaMaskで承認を待っています...', true);
-    } else if (error.message.includes('network')) {
-        showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-    } else {
-        showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
-    }
+    handleProviderError(error);
 }
 });
     </script>
