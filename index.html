@@ -29,9 +29,36 @@ setTimeout(() => {
     if (!isMetaMaskInitialized && !isMetaMaskDetectionComplete) {
         console.log('MetaMask not found after timeout');
         isMetaMaskDetectionComplete = true;
+        showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
         window.dispatchEvent(new Event('ethereum#initialized'));
     }
 }, 3000);
+
+// MetaMaskの状態を監視
+function monitorMetaMaskState() {
+    if (window.ethereum) {
+        // ネットワーク変更を監視
+        window.ethereum.on('chainChanged', async (chainId) => {
+            console.log('Network changed:', chainId);
+            if (chainId !== REQUIRED_CHAIN_ID) {
+                showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                resetState();
+            }
+        });
+
+        // アカウント変更を監視
+        window.ethereum.on('accountsChanged', async (accounts) => {
+            console.log('Account changed:', accounts);
+            if (accounts.length === 0) {
+                showStatus('ウォレットが切断されました', true);
+                resetState();
+            }
+        });
+    }
+}
+
+// 初期化時にMetaMaskの状態監視を開始
+monitorMetaMaskState();
 
 // MetaMaskのイベントリスナーを設定
 function setupMetaMaskListeners(ethereum, connectButton) {
