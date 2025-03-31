@@ -273,49 +273,55 @@ let loadingSpinner;
 let statusMessage;
 let balanceInfo;
 
-function detectEthereum() {
+async function detectEthereum() {
+    // Check if MetaMask is already available
+    if (window.ethereum) {
+        console.log('MetaMask detected immediately');
+        return window.ethereum;
+    }
+
+    // Check for legacy Web3
+    if (window.web3 && window.web3.currentProvider) {
+        console.log('Legacy Web3 provider detected');
+        return window.web3.currentProvider;
+    }
+
+    console.log('No Web3 provider found, waiting for injection...');
+    showStatus('MetaMaskをインストールしてください', true);
+
+    // Wait for MetaMask to be injected
     return new Promise((resolve) => {
-        let detected = false;
+        const checkInterval = 100; // ms
+        const maxWaitTime = 3000; // 3 seconds
+        const maxTries = maxWaitTime / checkInterval;
+        let tries = 0;
 
-        // Check for modern MetaMask
-        if (window.ethereum) {
-            console.log('Modern MetaMask detected');
-            detected = true;
+        const interval = setInterval(() => {
+            if (window.ethereum) {
+                console.log('MetaMask detected after waiting');
+                clearInterval(interval);
+                resolve(window.ethereum);
+                return;
+            }
+
+            tries++;
+            if (tries % 10 === 0) {
+                console.log(`Still waiting for MetaMask... (${tries}/${maxTries})`);
+            }
+
+            if (tries >= maxTries) {
+                console.log('MetaMask detection timeout');
+                clearInterval(interval);
+                resolve(null);
+            }
+        }, checkInterval);
+
+        // Also listen for the ethereum#initialized event
+        window.addEventListener('ethereum#initialized', () => {
+            console.log('MetaMask initialized event received');
+            clearInterval(interval);
             resolve(window.ethereum);
-            return;
-        }
-
-        // Check for legacy Web3
-        if (window.web3 && window.web3.currentProvider) {
-            console.log('Legacy Web3 provider detected');
-            detected = true;
-            resolve(window.web3.currentProvider);
-            return;
-        }
-
-        if (!detected) {
-            console.log('No Web3 provider found, waiting for injection...');
-            let tries = 0;
-            const maxTries = 30;
-            const interval = setInterval(() => {
-                if (window.ethereum) {
-                    console.log('MetaMask detected after waiting');
-                    clearInterval(interval);
-                    resolve(window.ethereum);
-                    return;
-                }
-
-                tries++;
-                console.log(`Waiting for MetaMask... (${tries}/${maxTries})`);
-
-                if (tries >= maxTries) {
-                    console.log('MetaMask detection timeout');
-                    clearInterval(interval);
-                    resolve(null);
-                    showStatus('MetaMaskをインストールしてください', true);
-                }
-            }, 100);
-        }
+        }, { once: true });
     });
 }
 
@@ -696,21 +702,25 @@ async function performSwap() {
     }
 }
 
-// Initialize after DOM and window are fully loaded
-window.addEventListener('load', async () => {
-    console.log('Window loaded, checking for Web3 provider...');
-    try {
-        await initializeUI();
-        console.log('UI initialization complete');
-    } catch (error) {
+// Initialize after DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing UI...');
+    initializeUI().catch(error => {
         console.error('UI initialization failed:', error);
         showStatus('初期化に失敗しました: ' + error.message, true);
-    }
+    });
 });
 
-// Handle MetaMask installation
-window.addEventListener('ethereum#initialized', () => {
-    console.log('MetaMask has been injected');
+// Also try to initialize when window is fully loaded
+window.addEventListener('load', () => {
+    console.log('Window loaded, checking MetaMask status...');
+    if (!web3) {
+        console.log('Web3 not initialized yet, retrying...');
+        initializeUI().catch(error => {
+            console.error('UI initialization retry failed:', error);
+            showStatus('MetaMaskの接続に失敗しました。ページを更新してください。', true);
+        });
+    }
 });
     </script>
 </body>
