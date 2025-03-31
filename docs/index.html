@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CAMEP-WFCA Swap</title>
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.9.0/dist/web3.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -275,73 +275,69 @@ let balanceInfo;
 
 async function initializeWeb3() {
     try {
-        // Wait for window.ethereum to be injected
-        await new Promise((resolve) => {
-            if (window.ethereum) {
-                resolve();
-            } else {
-                const checkEthereum = setInterval(() => {
-                    if (window.ethereum) {
-                        clearInterval(checkEthereum);
-                        resolve();
-                    }
-                }, 100);
-                setTimeout(() => {
-                    clearInterval(checkEthereum);
-                    if (!window.ethereum) {
-                        throw new Error('MetaMaskをインストールしてください');
-                    }
-                }, 3000);
-            }
-        });
+        console.log('Checking for MetaMask...');
+        
+        // Check if MetaMask is installed
+        if (typeof window.ethereum === 'undefined') {
+            console.error('MetaMask not found');
+            throw new Error('MetaMaskをインストールしてください');
+        }
 
-        // Request account access
+        console.log('MetaMask detected');
+
         try {
-            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            // Request account access
+            console.log('Requesting account access...');
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            console.log('Account access granted:', accounts);
+
+            if (!accounts || accounts.length === 0) {
+                console.error('No accounts found');
+                throw new Error('アカウントが見つかりません');
+            }
+
+            // Initialize Web3
+            web3 = new Web3(window.ethereum);
+            userAccount = accounts[0];
+            console.log('Web3 initialized with account:', userAccount);
+
+            // Get network ID
+            const networkId = await web3.eth.net.getId();
+            console.log('Current network ID:', networkId);
+
+            if (parseInt(networkId) !== NETWORK_ID) {
+                console.error('Wrong network:', networkId);
+                throw new Error(`${NETWORK_NAME}に切り替えてください`);
+            }
+
+            // Initialize contracts
+            console.log('Initializing contracts...');
+            try {
+                camepContract = new web3.eth.Contract(CAMEP_ABI, CAMEP_ADDRESS);
+                wfcaContract = new web3.eth.Contract(WFCA_ABI, WFCA_ADDRESS);
+                swapContract = new web3.eth.Contract(SWAP_CONTRACT_ABI, SWAP_CONTRACT_ADDRESS);
+
+                // Test contract connection
+                console.log('Testing contract connections...');
+                const [camepSymbol, wfcaSymbol] = await Promise.all([
+                    camepContract.methods.symbol().call(),
+                    wfcaContract.methods.symbol().call()
+                ]);
+                console.log('Contract symbols:', { camepSymbol, wfcaSymbol });
+
+                return true;
+            } catch (error) {
+                console.error('Contract initialization error:', error);
+                throw new Error('コントラクトの初期化に失敗しました');
+            }
         } catch (error) {
             if (error.code === 4001) {
+                console.error('User rejected account access');
                 throw new Error('ウォレット接続が拒否されました');
             } else {
+                console.error('Account access error:', error);
                 throw error;
             }
-        }
-
-        // Initialize Web3
-        web3 = new Web3(window.ethereum);
-
-        // Get accounts
-        const accounts = await web3.eth.getAccounts();
-        if (!accounts || accounts.length === 0) {
-            throw new Error('アカウントが見つかりません');
-        }
-
-        userAccount = accounts[0];
-        console.log('Connected account:', userAccount);
-
-        // Get network ID
-        const networkId = await web3.eth.net.getId();
-        console.log('Current network ID:', networkId);
-
-        if (parseInt(networkId) !== NETWORK_ID) {
-            throw new Error(`${NETWORK_NAME}に切り替えてください`);
-        }
-
-        // Initialize contracts
-        try {
-            camepContract = new web3.eth.Contract(CAMEP_ABI, CAMEP_ADDRESS);
-            wfcaContract = new web3.eth.Contract(WFCA_ABI, WFCA_ADDRESS);
-            swapContract = new web3.eth.Contract(SWAP_CONTRACT_ABI, SWAP_CONTRACT_ADDRESS);
-
-            // Test contract connection
-            await Promise.all([
-                camepContract.methods.symbol().call(),
-                wfcaContract.methods.symbol().call()
-            ]);
-
-            return true;
-        } catch (error) {
-            console.error('Contract initialization error:', error);
-            throw new Error('コントラクトの初期化に失敗しました');
         }
     } catch (error) {
         console.error('MetaMask connection error:', error);
