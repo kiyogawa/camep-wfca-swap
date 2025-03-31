@@ -1220,50 +1220,71 @@ try {
         console.log('MetaMask detected');
         connectButton.disabled = false;
 
-        // Listen for account changes
-        ethereum.removeAllListeners('accountsChanged');
-        ethereum.on('accountsChanged', async (accounts) => {
-            console.log('Account changed:', accounts);
-            try {
-                if (accounts.length === 0) {
-                    console.log('User disconnected');
-                    resetState();
-                    connectButton.textContent = 'MetaMaskに接続';
-                    connectButton.disabled = false;
-                    showStatus('ウォレットが切断されました', true);
-                } else {
-                    userAccount = accounts[0];
-                    await updateBalances();
-                    await updatePrices();
-                    showStatus('アカウントが変更されました');
+        // Set up event listeners
+        const setupEventListeners = () => {
+            // Listen for account changes
+            ethereum.removeAllListeners('accountsChanged');
+            ethereum.on('accountsChanged', async (accounts) => {
+                console.log('Account changed:', accounts);
+                try {
+                    if (accounts.length === 0) {
+                        console.log('User disconnected');
+                        resetState();
+                        connectButton.textContent = 'MetaMaskに接続';
+                        connectButton.disabled = false;
+                        showStatus('ウォレットが切断されました', true);
+                    } else {
+                        userAccount = accounts[0];
+                        await updateBalances();
+                        await updatePrices();
+                        showStatus('アカウントが変更されました');
+                    }
+                } catch (error) {
+                    console.error('Account change error:', error);
+                    showStatus('アカウント変更エラー: ' + error.message, true);
                 }
-            } catch (error) {
-                console.error('Account change error:', error);
-                showStatus('アカウント変更エラー: ' + error.message, true);
-            }
-        });
+            });
 
-        // Listen for network changes
-        ethereum.removeAllListeners('chainChanged');
-        ethereum.on('chainChanged', async (chainId) => {
-            console.log('Network changed:', chainId);
-            try {
-                if (chainId !== REQUIRED_CHAIN_ID) {
-                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-                    connectButton.textContent = 'MetaMaskに接続';
-                    connectButton.disabled = false;
-                    resetState();
-                } else {
-                    await initializeWeb3();
-                    await updateBalances();
-                    await updatePrices();
-                    showStatus('ネットワークが変更されました');
+            // Listen for network changes
+            ethereum.removeAllListeners('chainChanged');
+            ethereum.on('chainChanged', async (chainId) => {
+                console.log('Network changed:', chainId);
+                try {
+                    if (chainId !== REQUIRED_CHAIN_ID) {
+                        showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                        connectButton.textContent = 'MetaMaskに接続';
+                        connectButton.disabled = false;
+                        resetState();
+                    } else {
+                        await initializeWeb3();
+                        await updateBalances();
+                        await updatePrices();
+                        showStatus('ネットワークが変更されました');
+                    }
+                } catch (error) {
+                    console.error('Network change error:', error);
+                    showStatus('ネットワーク変更エラー: ' + error.message, true);
                 }
-            } catch (error) {
-                console.error('Network change error:', error);
-                showStatus('ネットワーク変更エラー: ' + error.message, true);
-            }
-        });
+            });
+
+            // Listen for connection events
+            ethereum.removeAllListeners('connect');
+            ethereum.on('connect', () => {
+                console.log('MetaMask connected');
+            });
+
+            ethereum.removeAllListeners('disconnect');
+            ethereum.on('disconnect', (error) => {
+                console.log('MetaMask disconnected:', error);
+                resetState();
+                connectButton.textContent = 'MetaMaskに接続';
+                connectButton.disabled = false;
+                showStatus('MetaMaskが切断されました', true);
+            });
+        };
+
+        // Set up initial event listeners
+        setupEventListeners();
 
         // Check if already connected
         try {
@@ -1271,6 +1292,16 @@ try {
             if (accounts.length > 0) {
                 console.log('Already connected:', accounts[0]);
                 userAccount = accounts[0];
+
+                // Check network
+                const chainId = await ethereum.request({ method: 'eth_chainId' });
+                if (chainId !== REQUIRED_CHAIN_ID) {
+                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                    return;
+                }
+
+                // Initialize Web3 and update UI
+                await initializeWeb3();
                 await updateBalances();
                 await updatePrices();
                 showStatus('既に接続されています');
@@ -1279,7 +1310,15 @@ try {
             }
         } catch (error) {
             console.error('Account check error:', error);
-            showStatus('アカウント確認エラー: ' + error.message, true);
+            if (error.code === 4001) {
+                showStatus('ウォレット接続が拒否されました', true);
+            } else if (error.code === -32002) {
+                showStatus('MetaMaskで承認を待っています...', true);
+            } else if (error.message.includes('network')) {
+                showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+            } else {
+                showStatus('アカウント確認エラー: ' + error.message, true);
+            }
         }
     } else {
         console.log('MetaMask not found');
