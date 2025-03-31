@@ -943,6 +943,17 @@ connectButton.addEventListener('click', async (e) => {
         if (!window.ethereum) {
             throw new Error('MetaMaskをインストールしてください');
         }
+
+        // Check if already connected
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts && accounts.length > 0) {
+            console.log('Already connected to account:', accounts[0]);
+            userAccount = accounts[0];
+            await updateBalances();
+            showStatus('既に接続されています');
+            return;
+        }
+
         await connectWallet();
     } catch (error) {
         console.error('Connect button error:', error);
@@ -1040,74 +1051,81 @@ depositInput.addEventListener('input', debounce(function(e) {
         console.error('Price update error:', error);
     }
 
-    // Initialize Web3
-    try {
-        console.log('Checking for MetaMask...');
-        const ethereum = await detectEthereum();
-        if (ethereum) {
-            console.log('MetaMask detected');
-            connectButton.disabled = false;
+// Initialize Web3
+try {
+    console.log('Checking for MetaMask...');
+    const ethereum = await detectEthereum();
+    if (ethereum) {
+        console.log('MetaMask detected');
+        connectButton.disabled = false;
 
-            // Listen for account changes
-            ethereum.removeAllListeners('accountsChanged');
-            ethereum.on('accountsChanged', async (accounts) => {
-                console.log('Account changed:', accounts);
-                try {
-                    if (accounts.length === 0) {
-                        console.log('User disconnected');
-                        resetState();
-                        connectButton.textContent = 'MetaMaskに接続';
-                        connectButton.disabled = false;
-                        showStatus('ウォレットが切断されました', true);
-                    } else {
-                        userAccount = accounts[0];
-                        await updateBalances();
-                    }
-                } catch (error) {
-                    console.error('Account change error:', error);
-                }
-            });
-
-            // Listen for network changes
-            ethereum.removeAllListeners('chainChanged');
-            ethereum.on('chainChanged', async (chainId) => {
-                console.log('Network changed:', chainId);
-                try {
-                    if (chainId !== REQUIRED_CHAIN_ID) {
-                        showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-                        connectButton.textContent = 'MetaMaskに接続';
-                        connectButton.disabled = false;
-                        resetState();
-                    } else {
-                        await initializeWeb3();
-                        await updateBalances();
-                        await updatePrices();
-                    }
-                } catch (error) {
-                    console.error('Network change error:', error);
-                }
-            });
-
-            // Check if already connected
+        // Listen for account changes
+        ethereum.removeAllListeners('accountsChanged');
+        ethereum.on('accountsChanged', async (accounts) => {
+            console.log('Account changed:', accounts);
             try {
-                const accounts = await ethereum.request({ method: 'eth_accounts' });
-                if (accounts.length > 0) {
-                    console.log('Already connected:', accounts[0]);
-                    await connectWallet();
+                if (accounts.length === 0) {
+                    console.log('User disconnected');
+                    resetState();
+                    connectButton.textContent = 'MetaMaskに接続';
+                    connectButton.disabled = false;
+                    showStatus('ウォレットが切断されました', true);
+                } else {
+                    userAccount = accounts[0];
+                    await updateBalances();
+                    showStatus('アカウントが変更されました');
                 }
             } catch (error) {
-                console.error('Account check error:', error);
+                console.error('Account change error:', error);
+                showStatus('アカウント変更エラー: ' + error.message, true);
             }
-        } else {
-            console.log('MetaMask not found');
-            connectButton.disabled = true;
-            showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
+        });
+
+        // Listen for network changes
+        ethereum.removeAllListeners('chainChanged');
+        ethereum.on('chainChanged', async (chainId) => {
+            console.log('Network changed:', chainId);
+            try {
+                if (chainId !== REQUIRED_CHAIN_ID) {
+                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                    connectButton.textContent = 'MetaMaskに接続';
+                    connectButton.disabled = false;
+                    resetState();
+                } else {
+                    await initializeWeb3();
+                    await updateBalances();
+                    await updatePrices();
+                    showStatus('ネットワークが変更されました');
+                }
+            } catch (error) {
+                console.error('Network change error:', error);
+                showStatus('ネットワーク変更エラー: ' + error.message, true);
+            }
+        });
+
+        // Check if already connected
+        try {
+            const accounts = await ethereum.request({ method: 'eth_accounts' });
+            if (accounts.length > 0) {
+                console.log('Already connected:', accounts[0]);
+                userAccount = accounts[0];
+                await updateBalances();
+                showStatus('既に接続されています');
+            }
+        } catch (error) {
+            console.error('Account check error:', error);
+            showStatus('アカウント確認エラー: ' + error.message, true);
         }
-    } catch (error) {
-        console.error('Initial setup error:', error);
+    } else {
+        console.log('MetaMask not found');
         connectButton.disabled = true;
-        showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
+        showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
     }
+} catch (error) {
+    console.error('Initial setup error:', error);
+    connectButton.disabled = true;
+    showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
+}
 });
     </script>
 </body>
