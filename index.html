@@ -999,11 +999,28 @@ connectButton.addEventListener('click', async (e) => {
 
             console.log('Connected to account:', requestedAccounts[0]);
             userAccount = requestedAccounts[0];
-            await connectWallet();
             
-            // Update UI after successful connection
+            // Initialize Web3 and contracts
+            console.log('Initializing Web3...');
+            await initializeWeb3();
+            console.log('Web3 initialized');
+
+            // Update UI
             connectButton.textContent = 'ウォレット接続済み';
             connectButton.disabled = true;
+
+            // Update balances and prices
+            console.log('Updating balances and prices...');
+            await Promise.all([
+                updateBalances(),
+                updatePrices()
+            ]);
+            console.log('Balances and prices updated');
+
+            showStatus('MetaMaskの接続に成功しました！');
+
+            // Set up event listeners
+            setupMetaMaskListeners(ethereum, connectButton);
         } catch (error) {
             console.error('Account access error:', error);
             if (error.code === 4001) {
