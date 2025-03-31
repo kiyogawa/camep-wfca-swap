@@ -321,69 +321,6 @@ async function initializeWeb3() {
             return;
         }
 
-        console.log('Web3 version:', web3.version.api);
-
-        // Get accounts
-        web3.eth.getAccounts((error, accounts) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            if (!accounts || accounts.length === 0) {
-                reject(new Error('アカウントが見つかりません'));
-                return;
-            }
-
-            userAccount = accounts[0];
-            console.log('Connected account:', userAccount);
-
-            // Get network ID
-            web3.version.getNetwork((error, networkId) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-
-                console.log('Current network ID:', networkId);
-                if (parseInt(networkId) !== NETWORK_ID) {
-                    reject(new Error(`${NETWORK_NAME}に切り替えてください`));
-                    return;
-                }
-
-                // Initialize contracts
-                try {
-                    camepContract = web3.eth.contract(CAMEP_ABI).at(CAMEP_ADDRESS);
-                    wfcaContract = web3.eth.contract(WFCA_ABI).at(WFCA_ADDRESS);
-                    swapContract = web3.eth.contract(SWAP_CONTRACT_ABI).at(SWAP_CONTRACT_ADDRESS);
-
-                    // Test contract methods
-                    Promise.all([
-                        new Promise((resolve, reject) => {
-                            camepContract.symbol((error, result) => {
-                                if (error) reject(error);
-                                else resolve(result);
-                            });
-                        }),
-                        new Promise((resolve, reject) => {
-                            wfcaContract.symbol((error, result) => {
-                                if (error) reject(error);
-                                else resolve(result);
-                            });
-                        })
-                    ]).then(([camepSymbol, wfcaSymbol]) => {
-                        console.log('Contract symbols:', { camepSymbol, wfcaSymbol });
-                        resolve(true);
-                    }).catch(error => {
-                        console.error('Contract test error:', error);
-                        reject(new Error('コントラクトの初期化に失敗しました'));
-                    });
-                } catch (error) {
-                    console.error('Contract initialization error:', error);
-                    reject(new Error('コントラクトの初期化に失敗しました'));
-                }
-            });
-        });
     });
 }
 
