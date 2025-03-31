@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CAMEP-WFCA Swap</title>
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bignumber.js@9.0.1/bignumber.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -273,21 +274,50 @@ let loadingSpinner;
 let statusMessage;
 let balanceInfo;
 
-async function requestAccounts() {
-    if (!window.ethereum) {
-        throw new Error('MetaMaskをインストールしてください');
-    }
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
-}
-
 async function initializeWeb3() {
     return new Promise(async (resolve, reject) => {
-        try {
-            // Request account access
-            await requestAccounts();
-            web3 = new Web3(window.ethereum);
-        } catch (error) {
-            reject(new Error('ウォレット接続が拒否されました'));
+        if (typeof window.ethereum !== 'undefined') {
+            try {
+                // Request account access
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                web3 = new Web3(window.ethereum);
+                
+                // Get accounts
+                const accounts = await web3.eth.getAccounts();
+                if (!accounts || accounts.length === 0) {
+                    reject(new Error('アカウントが見つかりません'));
+                    return;
+                }
+
+                userAccount = accounts[0];
+                console.log('Connected account:', userAccount);
+
+                // Get network ID
+                const networkId = await web3.eth.net.getId();
+                console.log('Current network ID:', networkId);
+                
+                if (networkId !== NETWORK_ID) {
+                    reject(new Error(`${NETWORK_NAME}に切り替えてください`));
+                    return;
+                }
+
+                // Initialize contracts
+                try {
+                    camepContract = new web3.eth.Contract(CAMEP_ABI, CAMEP_ADDRESS);
+                    wfcaContract = new web3.eth.Contract(WFCA_ABI, WFCA_ADDRESS);
+                    swapContract = new web3.eth.Contract(SWAP_CONTRACT_ABI, SWAP_CONTRACT_ADDRESS);
+
+                    resolve(true);
+                } catch (error) {
+                    console.error('Contract initialization error:', error);
+                    reject(new Error('コントラクトの初期化に失敗しました'));
+                }
+            } catch (error) {
+                reject(new Error('ウォレット接続が拒否されました'));
+                return;
+            }
+        } else {
+            reject(new Error('MetaMaskをインストールしてください'));
             return;
         }
 
