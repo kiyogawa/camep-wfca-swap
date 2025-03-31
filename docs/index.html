@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CAMEP-WFCA Swap</title>
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -276,12 +276,22 @@ let balanceInfo;
 async function initializeWeb3() {
     try {
         // Check if MetaMask is installed
-        if (typeof window.ethereum === 'undefined') {
+        if (!window.ethereum) {
             throw new Error('MetaMaskをインストールしてください');
         }
 
         // Request account access
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        try {
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+        } catch (error) {
+            if (error.code === 4001) {
+                throw new Error('ウォレット接続が拒否されました');
+            } else {
+                throw error;
+            }
+        }
+
+        // Initialize Web3
         web3 = new Web3(window.ethereum);
 
         // Get accounts
@@ -297,7 +307,7 @@ async function initializeWeb3() {
         const networkId = await web3.eth.net.getId();
         console.log('Current network ID:', networkId);
 
-        if (networkId !== NETWORK_ID) {
+        if (parseInt(networkId) !== NETWORK_ID) {
             throw new Error(`${NETWORK_NAME}に切り替えてください`);
         }
 
@@ -306,6 +316,13 @@ async function initializeWeb3() {
             camepContract = new web3.eth.Contract(CAMEP_ABI, CAMEP_ADDRESS);
             wfcaContract = new web3.eth.Contract(WFCA_ABI, WFCA_ADDRESS);
             swapContract = new web3.eth.Contract(SWAP_CONTRACT_ABI, SWAP_CONTRACT_ADDRESS);
+
+            // Test contract connection
+            await Promise.all([
+                camepContract.methods.symbol().call(),
+                wfcaContract.methods.symbol().call()
+            ]);
+
             return true;
         } catch (error) {
             console.error('Contract initialization error:', error);
