@@ -1341,7 +1341,8 @@ try {
                                 return;
                             }
                             // Test provider connection
-                            await ethereum.request({ method: 'eth_blockNumber' });
+                            const blockNumber = await ethereum.request({ method: 'eth_blockNumber' });
+                            console.log('Current block number:', parseInt(blockNumber, 16));
                             await updateBalances();
                             await updatePrices();
                             showStatus('アカウントが変更されました');
@@ -1369,7 +1370,8 @@ try {
                     } else {
                         try {
                             // Test provider connection
-                            await ethereum.request({ method: 'eth_blockNumber' });
+                            const blockNumber = await ethereum.request({ method: 'eth_blockNumber' });
+                            console.log('Current block number:', parseInt(blockNumber, 16));
                             await initializeWeb3();
                             await updateBalances();
                             await updatePrices();
@@ -1391,7 +1393,8 @@ try {
                 console.log('MetaMask connected:', connectInfo);
                 try {
                     // Test provider connection
-                    await ethereum.request({ method: 'eth_blockNumber' });
+                    const blockNumber = await ethereum.request({ method: 'eth_blockNumber' });
+                    console.log('Current block number:', parseInt(blockNumber, 16));
                     showStatus('MetaMaskが接続されました');
                 } catch (error) {
                     console.error('Connection test error:', error);
@@ -1418,6 +1421,12 @@ try {
 
         // Helper function to handle provider errors
         const handleProviderError = (error) => {
+            console.error('Provider error details:', {
+                code: error.code,
+                message: error.message,
+                stack: error.stack
+            });
+
             if (error.code === -32002) {
                 showStatus('MetaMaskで承認を待っています...', true);
             } else if (error.code === -32603) {
@@ -1438,6 +1447,12 @@ try {
                 showStatus('ユーザーによって拒否されました', true);
             } else if (error.message.includes('already pending')) {
                 showStatus('MetaMaskで承認を待っています...', true);
+            } else if (error.message.includes('insufficient funds')) {
+                showStatus('残高が不足しています', true);
+            } else if (error.message.includes('nonce')) {
+                showStatus('トランザクションの順序が正しくありません。MetaMaskをリセットしてください。', true);
+            } else if (error.message.includes('gas')) {
+                showStatus('ガス料金の計算に失敗しました。再度お試しください。', true);
             } else {
                 showStatus('エラーが発生しました: ' + error.message, true);
             }
@@ -1455,6 +1470,7 @@ try {
 
                 // Check network
                 const chainId = await ethereum.request({ method: 'eth_chainId' });
+                console.log('Current chain ID:', chainId);
                 if (chainId !== REQUIRED_CHAIN_ID) {
                     showStatus(`${NETWORK_NAME}に切り替えてください`, true);
                     return;
@@ -1462,7 +1478,8 @@ try {
 
                 try {
                     // Test provider connection
-                    await ethereum.request({ method: 'eth_blockNumber' });
+                    const blockNumber = await ethereum.request({ method: 'eth_blockNumber' });
+                    console.log('Current block number:', parseInt(blockNumber, 16));
                     
                     // Initialize Web3 and update UI
                     await initializeWeb3();
