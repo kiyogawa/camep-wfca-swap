@@ -739,30 +739,74 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusMessage = document.getElementById('statusMessage');
     balanceInfo = document.getElementById('balanceInfo');
     const connectButton = document.getElementById('connectWallet');
+    const depositButton = document.getElementById('depositButton');
+    const swapButton = document.getElementById('swapButton');
 
     // Event Listeners
     const camepInput = document.getElementById('camepAmount');
     const depositInput = document.getElementById('depositAmount');
 
-    connectButton.addEventListener('click', connectWallet);
-    document.getElementById('depositButton').addEventListener('click', performDeposit);
-    document.getElementById('swapButton').addEventListener('click', performSwap);
+    // Add click event listeners with error handling
+    connectButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+            console.log('Connect button clicked');
+            await connectWallet();
+        } catch (error) {
+            console.error('Connect button error:', error);
+            showStatus('接続エラー: ' + error.message, true);
+        }
+    });
+
+    depositButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+            console.log('Deposit button clicked');
+            await performDeposit();
+        } catch (error) {
+            console.error('Deposit button error:', error);
+            showStatus('入金エラー: ' + error.message, true);
+        }
+    });
+
+    swapButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+            console.log('Swap button clicked');
+            await performSwap();
+        } catch (error) {
+            console.error('Swap button error:', error);
+            showStatus('スワップエラー: ' + error.message, true);
+        }
+    });
     
     // CAMEP数量の入力イベント
     camepInput.addEventListener('input', function(e) {
         console.log('CAMEP input:', e.target.value);
-        updateWfcaAmount();
+        try {
+            updateWfcaAmount();
+        } catch (error) {
+            console.error('WFCA amount update error:', error);
+        }
     });
 
     // WFCA入金数量の入力イベント
     depositInput.addEventListener('input', function(e) {
         console.log('Deposit input:', e.target.value);
-        document.getElementById('depositButton').disabled = !e.target.value;
+        try {
+            depositButton.disabled = !e.target.value;
+        } catch (error) {
+            console.error('Deposit button update error:', error);
+        }
     });
 
     // Start price updates
-    updatePrices();
-    setInterval(updatePrices, 30000);
+    try {
+        await updatePrices();
+        setInterval(updatePrices, 30000);
+    } catch (error) {
+        console.error('Price update error:', error);
+    }
 
     // Initialize Web3
     try {
@@ -773,40 +817,54 @@ document.addEventListener('DOMContentLoaded', async () => {
             connectButton.disabled = false;
 
             // Listen for account changes
+            ethereum.removeAllListeners('accountsChanged');
             ethereum.on('accountsChanged', async (accounts) => {
                 console.log('Account changed:', accounts);
-                if (accounts.length === 0) {
-                    console.log('User disconnected');
-                    resetState();
-                    connectButton.textContent = 'MetaMaskに接続';
-                    connectButton.disabled = false;
-                    showStatus('ウォレットが切断されました', true);
-                } else {
-                    userAccount = accounts[0];
-                    await updateBalances();
+                try {
+                    if (accounts.length === 0) {
+                        console.log('User disconnected');
+                        resetState();
+                        connectButton.textContent = 'MetaMaskに接続';
+                        connectButton.disabled = false;
+                        showStatus('ウォレットが切断されました', true);
+                    } else {
+                        userAccount = accounts[0];
+                        await updateBalances();
+                    }
+                } catch (error) {
+                    console.error('Account change error:', error);
                 }
             });
 
             // Listen for network changes
+            ethereum.removeAllListeners('chainChanged');
             ethereum.on('chainChanged', async (chainId) => {
                 console.log('Network changed:', chainId);
-                if (chainId !== REQUIRED_CHAIN_ID) {
-                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-                    connectButton.textContent = 'MetaMaskに接続';
-                    connectButton.disabled = false;
-                    resetState();
-                } else {
-                    await initializeWeb3();
-                    await updateBalances();
-                    await updatePrices();
+                try {
+                    if (chainId !== REQUIRED_CHAIN_ID) {
+                        showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                        connectButton.textContent = 'MetaMaskに接続';
+                        connectButton.disabled = false;
+                        resetState();
+                    } else {
+                        await initializeWeb3();
+                        await updateBalances();
+                        await updatePrices();
+                    }
+                } catch (error) {
+                    console.error('Network change error:', error);
                 }
             });
 
             // Check if already connected
-            const accounts = await ethereum.request({ method: 'eth_accounts' });
-            if (accounts.length > 0) {
-                console.log('Already connected:', accounts[0]);
-                await connectWallet();
+            try {
+                const accounts = await ethereum.request({ method: 'eth_accounts' });
+                if (accounts.length > 0) {
+                    console.log('Already connected:', accounts[0]);
+                    await connectWallet();
+                }
+            } catch (error) {
+                console.error('Account check error:', error);
             }
         } else {
             console.log('MetaMask not found');
