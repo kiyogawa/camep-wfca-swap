@@ -661,9 +661,11 @@ async function performSwap() {
     }
 }
 
-// Initialize UI elements when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize UI elements and Web3 when DOM is ready
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM loaded, initializing UI elements...');
+    
+    // Initialize UI elements
     loadingSpinner = document.getElementById('loadingSpinner');
     statusMessage = document.getElementById('statusMessage');
     balanceInfo = document.getElementById('balanceInfo');
@@ -671,8 +673,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Listeners
     const camepInput = document.getElementById('camepAmount');
     const depositInput = document.getElementById('depositAmount');
+    const connectButton = document.getElementById('connectWallet');
 
-    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    connectButton.addEventListener('click', connectWallet);
     document.getElementById('depositButton').addEventListener('click', performDeposit);
     document.getElementById('swapButton').addEventListener('click', performSwap);
     
@@ -687,24 +690,25 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Deposit input:', e.target.value);
         document.getElementById('depositButton').disabled = !e.target.value;
     });
-});
 
-// Initialize Web3 when window is fully loaded
-window.addEventListener('load', async () => {
-    console.log('Window loaded, checking for MetaMask...');
+    // Check for MetaMask
     try {
         const ethereum = await detectEthereum();
         if (ethereum) {
-            console.log('MetaMask detected, initializing Web3...');
-            await initializeWeb3();
-            updatePrices();
-            setInterval(updatePrices, 30000);
+            console.log('MetaMask detected');
+            connectButton.disabled = false;
 
             // Listen for account changes
             ethereum.on('accountsChanged', async (accounts) => {
                 console.log('Account changed:', accounts[0]);
-                userAccount = accounts[0];
-                await connectWallet();
+                if (accounts.length === 0) {
+                    console.log('User disconnected');
+                    resetState();
+                    connectButton.textContent = 'MetaMaskに接続';
+                } else {
+                    userAccount = accounts[0];
+                    await updateBalances();
+                }
             });
 
             // Listen for network changes
@@ -712,7 +716,7 @@ window.addEventListener('load', async () => {
                 console.log('Network changed:', chainId);
                 if (chainId !== REQUIRED_CHAIN_ID) {
                     showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-                    document.getElementById('connectWallet').textContent = 'MetaMaskに接続';
+                    connectButton.textContent = 'MetaMaskに接続';
                     resetState();
                 } else {
                     await initializeWeb3();
@@ -720,14 +724,27 @@ window.addEventListener('load', async () => {
                     await updatePrices();
                 }
             });
+
+            // Check if already connected
+            const accounts = await ethereum.request({ method: 'eth_accounts' });
+            if (accounts.length > 0) {
+                console.log('Already connected:', accounts[0]);
+                await connectWallet();
+            }
         } else {
             console.log('MetaMask not found');
+            connectButton.disabled = true;
             showStatus('MetaMaskをインストールしてください', true);
         }
     } catch (error) {
-        console.error('Initial Web3 setup error:', error);
-        showStatus('MetaMaskの接続に失敗しました。ページを更新してください。', true);
+        console.error('Initial setup error:', error);
+        connectButton.disabled = true;
+        showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
     }
+
+    // Start price updates
+    updatePrices();
+    setInterval(updatePrices, 30000);
 });
     </script>
 </body>
