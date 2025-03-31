@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CAMEP-WFCA Swap</title>
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -273,61 +273,80 @@ let loadingSpinner;
 let statusMessage;
 let balanceInfo;
 
+function detectEthereum() {
+    return new Promise((resolve) => {
+        if (window.ethereum) {
+            resolve(window.ethereum);
+        }
+
+        let tries = 0;
+        const interval = setInterval(() => {
+            if (window.ethereum) {
+                clearInterval(interval);
+                resolve(window.ethereum);
+            }
+
+            if (++tries > 50) {
+                clearInterval(interval);
+                resolve(null);
+            }
+        }, 100);
+    });
+}
+
 async function initializeWeb3() {
     try {
-        // Check if MetaMask is installed
-        if (!window.ethereum && !window.web3) {
+        const ethereum = await detectEthereum();
+        if (!ethereum) {
             throw new Error('MetaMaskをインストールしてください');
         }
 
-        // Use MetaMask's provider
-        const provider = window.ethereum || window.web3.currentProvider;
-        web3 = new Web3(provider);
+        // Initialize Web3
+        web3 = new Web3(ethereum);
 
+        // Request account access
         try {
-            // Request account access
-            await provider.request({ method: 'eth_requestAccounts' });
-
-            // Get accounts
-            const accounts = await web3.eth.getAccounts();
-            if (!accounts || accounts.length === 0) {
-                throw new Error('アカウントが見つかりません');
-            }
-
-            userAccount = accounts[0];
-            console.log('Connected account:', userAccount);
-
-            // Get network ID
-            const networkId = await web3.eth.net.getId();
-            console.log('Current network ID:', networkId);
-
-            if (parseInt(networkId) !== NETWORK_ID) {
-                throw new Error(`${NETWORK_NAME}に切り替えてください`);
-            }
-
-            // Initialize contracts
-            try {
-                camepContract = new web3.eth.Contract(CAMEP_ABI, CAMEP_ADDRESS);
-                wfcaContract = new web3.eth.Contract(WFCA_ABI, WFCA_ADDRESS);
-                swapContract = new web3.eth.Contract(SWAP_CONTRACT_ABI, SWAP_CONTRACT_ADDRESS);
-
-                // Test contract connection
-                await Promise.all([
-                    camepContract.methods.symbol().call(),
-                    wfcaContract.methods.symbol().call()
-                ]);
-
-                return true;
-            } catch (error) {
-                console.error('Contract initialization error:', error);
-                throw new Error('コントラクトの初期化に失敗しました');
-            }
+            await ethereum.request({ method: 'eth_requestAccounts' });
         } catch (error) {
             if (error.code === 4001) {
                 throw new Error('ウォレット接続が拒否されました');
-            } else {
-                throw error;
             }
+            throw error;
+        }
+
+        // Get accounts
+        const accounts = await web3.eth.getAccounts();
+        if (!accounts || accounts.length === 0) {
+            throw new Error('アカウントが見つかりません');
+        }
+
+        userAccount = accounts[0];
+        console.log('Connected account:', userAccount);
+
+        // Get network ID
+        const networkId = await web3.eth.net.getId();
+        console.log('Current network ID:', networkId);
+
+        if (parseInt(networkId) !== NETWORK_ID) {
+            throw new Error(`${NETWORK_NAME}に切り替えてください`);
+        }
+
+        // Initialize contracts
+        try {
+            camepContract = new web3.eth.Contract(CAMEP_ABI, CAMEP_ADDRESS);
+            wfcaContract = new web3.eth.Contract(WFCA_ABI, WFCA_ADDRESS);
+            swapContract = new web3.eth.Contract(SWAP_CONTRACT_ABI, SWAP_CONTRACT_ADDRESS);
+
+            // Test contract connection
+            await Promise.all([
+                camepContract.methods.symbol().call(),
+                wfcaContract.methods.symbol().call()
+            ]);
+
+            return true;
+        } catch (error) {
+            console.error('Contract initialization error:', error);
+            throw new Error('コントラクトの初期化に失敗しました');
         }
     } catch (error) {
         console.error('MetaMask connection error:', error);
@@ -335,7 +354,7 @@ async function initializeWeb3() {
     }
 }
 
-function initializeUI() {
+async function initializeUI() {
     loadingSpinner = document.getElementById('loadingSpinner');
     statusMessage = document.getElementById('statusMessage');
     balanceInfo = document.getElementById('balanceInfo');
@@ -361,22 +380,34 @@ function initializeUI() {
     });
 
     // Initialize Web3 if already connected
-    if (typeof web3 !== 'undefined') {
-        initializeWeb3().then(() => {
-            // Update prices every 30 seconds after successful initialization
+    const ethereum = await detectEthereum();
+    if (ethereum) {
+        try {
+            await initializeWeb3();
             updatePrices();
             setInterval(updatePrices, 30000);
-        }).catch(error => {
-            console.error('Initial Web3 setup error:', error);
-        });
-    }
 
-    // Listen for account changes
-    if (window.ethereum) {
-        window.ethereum.on('accountsChanged', function (accounts) {
-            userAccount = accounts[0];
-            connectWallet();
-        });
+            // Listen for account changes
+            ethereum.on('accountsChanged', async (accounts) => {
+                userAccount = accounts[0];
+                await connectWallet();
+            });
+
+            // Listen for network changes
+            ethereum.on('chainChanged', async (chainId) => {
+                if (chainId !== REQUIRED_CHAIN_ID) {
+                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                    document.getElementById('connectWallet').textContent = 'MetaMaskに接続';
+                    resetState();
+                } else {
+                    await initializeWeb3();
+                    await updateBalances();
+                    await updatePrices();
+                }
+            });
+        } catch (error) {
+            console.error('Initial Web3 setup error:', error);
+        }
     }
 }
 
