@@ -9,11 +9,14 @@
 // MetaMaskの初期化を待つ
 let isMetaMaskInitialized = false;
 
+// MetaMaskの初期化イベントを監視
 window.addEventListener('ethereum#initialized', () => {
     console.log('MetaMask initialized event received');
     isMetaMaskInitialized = true;
     window.ethereum = window.ethereum;
-    initializeMetaMask();
+    initializeMetaMask().catch(error => {
+        console.error('MetaMask initialization error:', error);
+    });
 }, { once: true });
 
 // 3秒後にMetaMaskが見つからない場合は初期化完了とみなす
@@ -23,6 +26,53 @@ setTimeout(() => {
         window.dispatchEvent(new Event('ethereum#initialized'));
     }
 }, 3000);
+
+// MetaMaskのイベントリスナーを設定
+function setupMetaMaskListeners(ethereum, connectButton) {
+    console.log('Setting up MetaMask event listeners...');
+
+    // アカウント変更イベント
+    ethereum.removeAllListeners('accountsChanged');
+    ethereum.on('accountsChanged', async (accounts) => {
+        console.log('Account changed:', accounts);
+        try {
+            if (accounts.length === 0) {
+                console.log('User disconnected');
+                resetState();
+                connectButton.textContent = 'MetaMaskに接続';
+                connectButton.disabled = false;
+                showStatus('ウォレットが切断されました', true);
+            } else {
+                userAccount = accounts[0];
+                await updateBalances();
+            }
+        } catch (error) {
+            console.error('Account change error:', error);
+            showStatus('アカウント変更エラー: ' + error.message, true);
+        }
+    });
+
+    // ネットワーク変更イベント
+    ethereum.removeAllListeners('chainChanged');
+    ethereum.on('chainChanged', async (chainId) => {
+        console.log('Network changed:', chainId);
+        try {
+            if (chainId !== REQUIRED_CHAIN_ID) {
+                showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                connectButton.textContent = 'MetaMaskに接続';
+                connectButton.disabled = false;
+                resetState();
+            } else {
+                await initializeWeb3();
+                await updateBalances();
+                await updatePrices();
+            }
+        } catch (error) {
+            console.error('Network change error:', error);
+            showStatus('ネットワーク変更エラー: ' + error.message, true);
+        }
+    });
+}
 
 // MetaMaskの初期化処理
 async function initializeMetaMask() {
@@ -35,45 +85,8 @@ async function initializeMetaMask() {
             console.log('MetaMask is installed');
             connectButton.disabled = false;
 
-            // Listen for account changes
-            window.ethereum.removeAllListeners('accountsChanged');
-            window.ethereum.on('accountsChanged', async (accounts) => {
-                console.log('Account changed:', accounts);
-                try {
-                    if (accounts.length === 0) {
-                        console.log('User disconnected');
-                        resetState();
-                        connectButton.textContent = 'MetaMaskに接続';
-                        connectButton.disabled = false;
-                        showStatus('ウォレットが切断されました', true);
-                    } else {
-                        userAccount = accounts[0];
-                        await updateBalances();
-                    }
-                } catch (error) {
-                    console.error('Account change error:', error);
-                }
-            });
-
-            // Listen for network changes
-            window.ethereum.removeAllListeners('chainChanged');
-            window.ethereum.on('chainChanged', async (chainId) => {
-                console.log('Network changed:', chainId);
-                try {
-                    if (chainId !== REQUIRED_CHAIN_ID) {
-                        showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-                        connectButton.textContent = 'MetaMaskに接続';
-                        connectButton.disabled = false;
-                        resetState();
-                    } else {
-                        await initializeWeb3();
-                        await updateBalances();
-                        await updatePrices();
-                    }
-                } catch (error) {
-                    console.error('Network change error:', error);
-                }
-            });
+            // Set up event listeners
+            setupMetaMaskListeners(window.ethereum, connectButton);
 
             // Check if already connected
             try {
@@ -84,6 +97,7 @@ async function initializeMetaMask() {
                 }
             } catch (error) {
                 console.error('Account check error:', error);
+                showStatus('アカウント確認エラー: ' + error.message, true);
             }
         } else {
             console.log('MetaMask is not installed');
