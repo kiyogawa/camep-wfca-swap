@@ -717,19 +717,19 @@ async function performSwap() {
     }
 }
 
-// Initialize UI elements when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing UI elements...');
+// Initialize UI elements and Web3 when DOM is ready
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM loaded, initializing UI elements and Web3...');
     
     // Initialize UI elements
     loadingSpinner = document.getElementById('loadingSpinner');
     statusMessage = document.getElementById('statusMessage');
     balanceInfo = document.getElementById('balanceInfo');
+    const connectButton = document.getElementById('connectWallet');
 
     // Event Listeners
     const camepInput = document.getElementById('camepAmount');
     const depositInput = document.getElementById('depositAmount');
-    const connectButton = document.getElementById('connectWallet');
 
     connectButton.addEventListener('click', connectWallet);
     document.getElementById('depositButton').addEventListener('click', performDeposit);
@@ -750,14 +750,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Start price updates
     updatePrices();
     setInterval(updatePrices, 30000);
-});
 
-// Initialize Web3 when window is fully loaded
-window.addEventListener('load', async () => {
-    console.log('Window loaded, checking for MetaMask...');
-    const connectButton = document.getElementById('connectWallet');
-    
+    // Initialize Web3
     try {
+        console.log('Checking for MetaMask...');
         const ethereum = await detectEthereum();
         if (ethereum) {
             console.log('MetaMask detected');
