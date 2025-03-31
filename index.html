@@ -524,16 +524,25 @@ async function detectEthereum() {
             console.log('Confirmed MetaMask provider');
             try {
                 // Test provider connection
-                await window.ethereum.request({ method: 'eth_chainId' });
-                console.log('Provider connection test successful');
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                console.log('Provider connection test successful, chain ID:', chainId);
+                
+                // Check if we're on the correct network
+                if (chainId !== REQUIRED_CHAIN_ID) {
+                    console.log('Wrong network detected:', chainId);
+                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                    return window.ethereum;
+                }
+
+                // Test block number request
+                const blockNumber = await window.ethereum.request({ method: 'eth_blockNumber' });
+                console.log('Current block number:', parseInt(blockNumber, 16));
+
                 return window.ethereum;
             } catch (error) {
                 console.error('Provider connection test failed:', error);
-                if (error.code === -32002) {
-                    showStatus('MetaMaskで承認を待っています...', true);
-                } else {
-                    showStatus('プロバイダー接続エラー: ' + error.message, true);
-                }
+                handleProviderError(error);
+                return window.ethereum; // Still return provider for retry
             }
         } else {
             console.log('Found non-MetaMask provider');
@@ -548,12 +557,21 @@ async function detectEthereum() {
             console.log('Confirmed legacy MetaMask provider');
             try {
                 // Test provider connection
-                await window.web3.currentProvider.request({ method: 'eth_chainId' });
-                console.log('Legacy provider connection test successful');
+                const chainId = await window.web3.currentProvider.request({ method: 'eth_chainId' });
+                console.log('Legacy provider connection test successful, chain ID:', chainId);
+
+                // Check if we're on the correct network
+                if (chainId !== REQUIRED_CHAIN_ID) {
+                    console.log('Wrong network detected:', chainId);
+                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                    return window.web3.currentProvider;
+                }
+
                 return window.web3.currentProvider;
             } catch (error) {
                 console.error('Legacy provider connection test failed:', error);
-                showStatus('レガシープロバイダー接続エラー: ' + error.message, true);
+                handleProviderError(error);
+                return window.web3.currentProvider; // Still return provider for retry
             }
         } else {
             console.log('Found non-MetaMask legacy provider');
@@ -583,17 +601,28 @@ async function detectEthereum() {
                 if (provider && provider.isMetaMask) {
                     try {
                         // Test provider connection
-                        await provider.request({ method: 'eth_chainId' });
-                        console.log('Provider connection test successful after waiting');
+                        const chainId = await provider.request({ method: 'eth_chainId' });
+                        console.log('Provider connection test successful after waiting, chain ID:', chainId);
+
+                        // Check if we're on the correct network
+                        if (chainId !== REQUIRED_CHAIN_ID) {
+                            console.log('Wrong network detected:', chainId);
+                            showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                            resolve(provider);
+                            return;
+                        }
+
+                        // Test block number request
+                        const blockNumber = await provider.request({ method: 'eth_blockNumber' });
+                        console.log('Current block number:', parseInt(blockNumber, 16));
+
                         resolve(provider);
                         return;
                     } catch (error) {
                         console.error('Provider connection test failed after waiting:', error);
-                        if (error.code === -32002) {
-                            showStatus('MetaMaskで承認を待っています...', true);
-                        } else {
-                            showStatus('プロバイダー接続エラー: ' + error.message, true);
-                        }
+                        handleProviderError(error);
+                        resolve(provider); // Still resolve with provider for retry
+                        return;
                     }
                 }
                 resolve(null);
