@@ -982,27 +982,37 @@ connectButton.addEventListener('click', async (e) => {
             console.log('Already connected to account:', accounts[0]);
             userAccount = accounts[0];
             
-            // Initialize Web3 and contracts
-            console.log('Initializing Web3...');
-            await initializeWeb3();
-            console.log('Web3 initialized');
+            try {
+                // Initialize Web3 and contracts
+                console.log('Initializing Web3...');
+                await initializeWeb3();
+                console.log('Web3 initialized');
 
-            // Update UI
-            connectButton.textContent = 'ウォレット接続済み';
-            connectButton.disabled = true;
+                // Update UI
+                connectButton.textContent = 'ウォレット接続済み';
+                connectButton.disabled = true;
 
-            // Update balances and prices
-            console.log('Updating balances and prices...');
-            await Promise.all([
-                updateBalances(),
-                updatePrices()
-            ]);
-            console.log('Balances and prices updated');
+                // Update balances and prices
+                console.log('Updating balances and prices...');
+                await Promise.all([
+                    updateBalances(),
+                    updatePrices()
+                ]);
+                console.log('Balances and prices updated');
 
-            showStatus('既に接続されています');
+                showStatus('既に接続されています');
 
-            // Set up event listeners
-            setupMetaMaskListeners(ethereum, connectButton);
+                // Set up event listeners
+                setupMetaMaskListeners(ethereum, connectButton);
+            } catch (error) {
+                console.error('Initialization error:', error);
+                if (error.message.includes('network')) {
+                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                } else {
+                    showStatus('初期化エラー: ' + error.message, true);
+                }
+                throw error;
+            }
             return;
         }
 
@@ -1017,27 +1027,37 @@ connectButton.addEventListener('click', async (e) => {
             console.log('Connected to account:', requestedAccounts[0]);
             userAccount = requestedAccounts[0];
             
-            // Initialize Web3 and contracts
-            console.log('Initializing Web3...');
-            await initializeWeb3();
-            console.log('Web3 initialized');
+            try {
+                // Initialize Web3 and contracts
+                console.log('Initializing Web3...');
+                await initializeWeb3();
+                console.log('Web3 initialized');
 
-            // Update UI
-            connectButton.textContent = 'ウォレット接続済み';
-            connectButton.disabled = true;
+                // Update UI
+                connectButton.textContent = 'ウォレット接続済み';
+                connectButton.disabled = true;
 
-            // Update balances and prices
-            console.log('Updating balances and prices...');
-            await Promise.all([
-                updateBalances(),
-                updatePrices()
-            ]);
-            console.log('Balances and prices updated');
+                // Update balances and prices
+                console.log('Updating balances and prices...');
+                await Promise.all([
+                    updateBalances(),
+                    updatePrices()
+                ]);
+                console.log('Balances and prices updated');
 
-            showStatus('MetaMaskの接続に成功しました！');
+                showStatus('MetaMaskの接続に成功しました！');
 
-            // Set up event listeners
-            setupMetaMaskListeners(ethereum, connectButton);
+                // Set up event listeners
+                setupMetaMaskListeners(ethereum, connectButton);
+            } catch (error) {
+                console.error('Initialization error:', error);
+                if (error.message.includes('network')) {
+                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                } else {
+                    showStatus('初期化エラー: ' + error.message, true);
+                }
+                throw error;
+            }
         } catch (error) {
             console.error('Account access error:', error);
             if (error.code === 4001) {
