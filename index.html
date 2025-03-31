@@ -548,8 +548,13 @@ async function connectWallet() {
 
         // Request account access
         try {
-            await ethereum.request({ method: 'eth_requestAccounts' });
-            console.log('Account access granted');
+            console.log('Requesting account access...');
+            const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+            console.log('Account access granted:', accounts);
+
+            if (!accounts || accounts.length === 0) {
+                throw new Error('アカウントが見つかりません');
+            }
         } catch (error) {
             console.error('Account access denied:', error);
             if (error.code === 4001) {
@@ -559,6 +564,7 @@ async function connectWallet() {
         }
 
         // Initialize Web3
+        console.log('Initializing Web3...');
         await initializeWeb3();
         console.log('Web3 initialized');
 
@@ -566,12 +572,18 @@ async function connectWallet() {
         connectButton.textContent = 'ウォレット接続済み';
         connectButton.disabled = true;
         updateWfcaAmount();
-        await updateBalances();
-        await updatePrices();
+
+        console.log('Updating balances and prices...');
+        await Promise.all([
+            updateBalances(),
+            updatePrices()
+        ]);
+        console.log('Balances and prices updated');
 
         showStatus('MetaMaskの接続に成功しました！');
 
         // Listen for network changes
+        ethereum.removeAllListeners('chainChanged');
         ethereum.on('chainChanged', async (chainId) => {
             console.log('Network changed:', chainId);
             if (chainId !== REQUIRED_CHAIN_ID) {
@@ -587,6 +599,7 @@ async function connectWallet() {
         });
 
         // Listen for account changes
+        ethereum.removeAllListeners('accountsChanged');
         ethereum.on('accountsChanged', async (accounts) => {
             console.log('Account changed:', accounts);
             if (accounts.length === 0) {
