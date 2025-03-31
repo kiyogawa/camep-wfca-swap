@@ -697,8 +697,8 @@ async function performSwap() {
     }
 }
 
-// Initialize UI elements and Web3 when DOM is ready
-document.addEventListener('DOMContentLoaded', async () => {
+// Initialize UI elements when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing UI elements...');
     
     // Initialize UI elements
@@ -727,7 +727,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('depositButton').disabled = !e.target.value;
     });
 
-    // Check for MetaMask
+    // Start price updates
+    updatePrices();
+    setInterval(updatePrices, 30000);
+});
+
+// Initialize Web3 when window is fully loaded
+window.addEventListener('load', async () => {
+    console.log('Window loaded, checking for MetaMask...');
+    const connectButton = document.getElementById('connectWallet');
+    
     try {
         const ethereum = await detectEthereum();
         if (ethereum) {
@@ -736,11 +745,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Listen for account changes
             ethereum.on('accountsChanged', async (accounts) => {
-                console.log('Account changed:', accounts[0]);
+                console.log('Account changed:', accounts);
                 if (accounts.length === 0) {
                     console.log('User disconnected');
                     resetState();
                     connectButton.textContent = 'MetaMaskに接続';
+                    connectButton.disabled = false;
+                    showStatus('ウォレットが切断されました', true);
                 } else {
                     userAccount = accounts[0];
                     await updateBalances();
@@ -753,6 +764,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (chainId !== REQUIRED_CHAIN_ID) {
                     showStatus(`${NETWORK_NAME}に切り替えてください`, true);
                     connectButton.textContent = 'MetaMaskに接続';
+                    connectButton.disabled = false;
                     resetState();
                 } else {
                     await initializeWeb3();
@@ -770,17 +782,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             console.log('MetaMask not found');
             connectButton.disabled = true;
-            showStatus('MetaMaskをインストールしてください', true);
+            showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
         }
     } catch (error) {
         console.error('Initial setup error:', error);
         connectButton.disabled = true;
         showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
     }
-
-    // Start price updates
-    updatePrices();
-    setInterval(updatePrices, 30000);
 });
     </script>
 </body>
