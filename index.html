@@ -32,38 +32,76 @@ async function initializeEthereum() {
     // Wait for MetaMask to be injected
     return new Promise((resolve) => {
         let isResolved = false;
+        let detectionTimeout;
+        let initializationTimeout;
 
-        // Listen for the ethereum#initialized event
-        window.addEventListener('ethereum#initialized', async () => {
-            console.log('MetaMask initialized event received');
+        const cleanup = () => {
+            if (detectionTimeout) clearTimeout(detectionTimeout);
+            if (initializationTimeout) clearTimeout(initializationTimeout);
+            window.removeEventListener('ethereum#initialized', handleInitialized);
+        };
+
+        const resolveOnce = (provider) => {
             if (!isResolved) {
                 isResolved = true;
+                cleanup();
+                resolve(provider);
+            }
+        };
+
+        const handleInitialized = async () => {
+            console.log('MetaMask initialized event received');
+            if (!isResolved) {
                 isMetaMaskInitialized = true;
                 window.ethereum = window.ethereum;
                 if (!isMetaMaskDetectionComplete) {
                     isMetaMaskDetectionComplete = true;
                     try {
                         await initializeMetaMask();
-                        resolve(window.ethereum);
+                        resolveOnce(window.ethereum);
                     } catch (error) {
                         console.error('MetaMask initialization error:', error);
                         showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
-                        resolve(null);
+                        resolveOnce(null);
                     }
                 }
             }
-        }, { once: true });
+        };
 
-        // 3秒後にMetaMaskが見つからない場合は初期化完了とみなす
-        setTimeout(() => {
-            if (!isResolved) {
-                isResolved = true;
-                console.log('MetaMask not found after timeout');
+        // Listen for the ethereum#initialized event
+        window.addEventListener('ethereum#initialized', handleInitialized);
+
+        // Check for MetaMask every 100ms for 3 seconds
+        let attempts = 0;
+        const maxAttempts = 30;
+        const checkInterval = setInterval(() => {
+            attempts++;
+            if (window.ethereum) {
+                console.log('MetaMask detected after waiting');
+                clearInterval(checkInterval);
+                resolveOnce(window.ethereum);
+                return;
+            }
+
+            if (attempts >= maxAttempts) {
+                console.log('MetaMask detection timeout');
+                clearInterval(checkInterval);
                 isMetaMaskDetectionComplete = true;
                 showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
-                resolve(null);
+                resolveOnce(null);
+            } else if (attempts % 10 === 0) {
+                console.log(`Still waiting for MetaMask... (${attempts}/${maxAttempts})`);
             }
-        }, 3000);
+        }, 100);
+
+        // Fallback timeout after 5 seconds
+        initializationTimeout = setTimeout(() => {
+            if (!isResolved) {
+                console.log('MetaMask initialization final timeout');
+                clearInterval(checkInterval);
+                resolveOnce(null);
+            }
+        }, 5000);
     });
 }
 
