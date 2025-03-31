@@ -295,18 +295,7 @@ async function detectEthereum() {
     // Check if MetaMask is already available
     if (window.ethereum) {
         console.log('MetaMask detected immediately');
-        try {
-            // Request account access
-            await window.ethereum.request({ method: 'eth_requestAccounts' });
-            console.log('Account access granted');
-            return window.ethereum;
-        } catch (error) {
-            console.error('Account access denied:', error);
-            if (error.code === 4001) {
-                showStatus('ウォレット接続が拒否されました', true);
-            }
-            throw error;
-        }
+        return window.ethereum;
     }
 
     // Check for legacy Web3
@@ -320,16 +309,24 @@ async function detectEthereum() {
 
     // Wait for MetaMask to be injected
     return new Promise((resolve) => {
+        let isResolved = false;
         const checkInterval = 100; // ms
         const maxWaitTime = 3000; // 3 seconds
         const maxTries = maxWaitTime / checkInterval;
         let tries = 0;
 
+        const resolveOnce = (provider) => {
+            if (!isResolved) {
+                isResolved = true;
+                clearInterval(interval);
+                resolve(provider);
+            }
+        };
+
         const interval = setInterval(() => {
             if (window.ethereum) {
                 console.log('MetaMask detected after waiting');
-                clearInterval(interval);
-                resolve(window.ethereum);
+                resolveOnce(window.ethereum);
                 return;
             }
 
@@ -340,18 +337,23 @@ async function detectEthereum() {
 
             if (tries >= maxTries) {
                 console.log('MetaMask detection timeout');
-                clearInterval(interval);
-                resolve(null);
-                showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
+                resolveOnce(null);
             }
         }, checkInterval);
 
         // Also listen for the ethereum#initialized event
         window.addEventListener('ethereum#initialized', () => {
             console.log('MetaMask initialized event received');
-            clearInterval(interval);
-            resolve(window.ethereum);
+            resolveOnce(window.ethereum);
         }, { once: true });
+
+        // Fallback timeout
+        setTimeout(() => {
+            if (!isResolved) {
+                console.log('MetaMask detection final timeout');
+                resolveOnce(null);
+            }
+        }, maxWaitTime + 1000);
     });
 }
 
@@ -538,6 +540,24 @@ async function connectWallet() {
         showLoading();
         showStatus('MetaMaskに接続中...');
 
+        // Check for MetaMask
+        const ethereum = await detectEthereum();
+        if (!ethereum) {
+            throw new Error('MetaMaskをインストールしてください');
+        }
+
+        // Request account access
+        try {
+            await ethereum.request({ method: 'eth_requestAccounts' });
+            console.log('Account access granted');
+        } catch (error) {
+            console.error('Account access denied:', error);
+            if (error.code === 4001) {
+                throw new Error('ウォレット接続が拒否されました');
+            }
+            throw error;
+        }
+
         // Initialize Web3
         await initializeWeb3();
         console.log('Web3 initialized');
@@ -552,7 +572,7 @@ async function connectWallet() {
         showStatus('MetaMaskの接続に成功しました！');
 
         // Listen for network changes
-        window.ethereum.on('chainChanged', async (chainId) => {
+        ethereum.on('chainChanged', async (chainId) => {
             console.log('Network changed:', chainId);
             if (chainId !== REQUIRED_CHAIN_ID) {
                 showStatus(`${NETWORK_NAME}に切り替えてください`, true);
@@ -567,7 +587,7 @@ async function connectWallet() {
         });
 
         // Listen for account changes
-        window.ethereum.on('accountsChanged', async (accounts) => {
+        ethereum.on('accountsChanged', async (accounts) => {
             console.log('Account changed:', accounts);
             if (accounts.length === 0) {
                 console.log('User disconnected');
