@@ -522,9 +522,22 @@ async function detectEthereum() {
         console.log('MetaMask detected immediately');
         if (window.ethereum.isMetaMask) {
             console.log('Confirmed MetaMask provider');
-            return window.ethereum;
+            try {
+                // Test provider connection
+                await window.ethereum.request({ method: 'eth_chainId' });
+                console.log('Provider connection test successful');
+                return window.ethereum;
+            } catch (error) {
+                console.error('Provider connection test failed:', error);
+                if (error.code === -32002) {
+                    showStatus('MetaMaskで承認を待っています...', true);
+                } else {
+                    showStatus('プロバイダー接続エラー: ' + error.message, true);
+                }
+            }
         } else {
             console.log('Found non-MetaMask provider');
+            showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
         }
     }
 
@@ -533,9 +546,18 @@ async function detectEthereum() {
         console.log('Legacy Web3 provider detected');
         if (window.web3.currentProvider.isMetaMask) {
             console.log('Confirmed legacy MetaMask provider');
-            return window.web3.currentProvider;
+            try {
+                // Test provider connection
+                await window.web3.currentProvider.request({ method: 'eth_chainId' });
+                console.log('Legacy provider connection test successful');
+                return window.web3.currentProvider;
+            } catch (error) {
+                console.error('Legacy provider connection test failed:', error);
+                showStatus('レガシープロバイダー接続エラー: ' + error.message, true);
+            }
         } else {
             console.log('Found non-MetaMask legacy provider');
+            showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
         }
     }
 
@@ -554,11 +576,27 @@ async function detectEthereum() {
             window.removeEventListener('ethereum#initialized', handleInitialized);
         };
 
-        const resolveOnce = (provider) => {
+        const resolveOnce = async (provider) => {
             if (!isResolved) {
                 isResolved = true;
                 cleanup();
-                resolve(provider);
+                if (provider && provider.isMetaMask) {
+                    try {
+                        // Test provider connection
+                        await provider.request({ method: 'eth_chainId' });
+                        console.log('Provider connection test successful after waiting');
+                        resolve(provider);
+                        return;
+                    } catch (error) {
+                        console.error('Provider connection test failed after waiting:', error);
+                        if (error.code === -32002) {
+                            showStatus('MetaMaskで承認を待っています...', true);
+                        } else {
+                            showStatus('プロバイダー接続エラー: ' + error.message, true);
+                        }
+                    }
+                }
+                resolve(null);
             }
         };
 
@@ -569,6 +607,7 @@ async function detectEthereum() {
                 resolveOnce(window.ethereum);
             } else {
                 console.log('Found non-MetaMask provider after initialization');
+                resolveOnce(null);
             }
         };
 
