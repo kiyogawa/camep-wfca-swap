@@ -985,11 +985,13 @@ connectButton.addEventListener('click', async (e) => {
             await updatePrices();
             showStatus('既に接続されています');
             connectButton.textContent = 'ウォレット接続済み';
+            connectButton.disabled = true;
             return;
         }
 
         // Request account access
         try {
+            console.log('Requesting account access...');
             const requestedAccounts = await ethereum.request({ method: 'eth_requestAccounts' });
             if (!requestedAccounts || requestedAccounts.length === 0) {
                 throw new Error('アカウントが見つかりません');
@@ -998,7 +1000,12 @@ connectButton.addEventListener('click', async (e) => {
             console.log('Connected to account:', requestedAccounts[0]);
             userAccount = requestedAccounts[0];
             await connectWallet();
+            
+            // Update UI after successful connection
+            connectButton.textContent = 'ウォレット接続済み';
+            connectButton.disabled = true;
         } catch (error) {
+            console.error('Account access error:', error);
             if (error.code === 4001) {
                 throw new Error('ウォレット接続が拒否されました');
             } else if (error.code === -32002) {
@@ -1018,6 +1025,7 @@ connectButton.addEventListener('click', async (e) => {
             showStatus('接続エラー: ' + error.message, true);
         }
         connectButton.disabled = false;
+        connectButton.textContent = 'MetaMaskに接続';
     } finally {
         hideLoading();
     }
