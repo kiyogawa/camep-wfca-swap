@@ -1344,9 +1344,20 @@ try {
                             const blockNumber = await ethereum.request({ method: 'eth_blockNumber' });
                             console.log('Current block number:', parseInt(blockNumber, 16));
                             
-                            // Get gas price
-                            const gasPrice = await ethereum.request({ method: 'eth_gasPrice' });
-                            console.log('Current gas price:', parseInt(gasPrice, 16));
+                            // Get gas price and estimate
+                            const [gasPrice, gasEstimate] = await Promise.all([
+                                ethereum.request({ method: 'eth_gasPrice' }),
+                                ethereum.request({
+                                    method: 'eth_estimateGas',
+                                    params: [{
+                                        from: accounts[0],
+                                        to: SWAP_CONTRACT_ADDRESS,
+                                        data: '0x'
+                                    }]
+                                })
+                            ]);
+                            console.log('Current gas price:', web3.utils.fromWei(gasPrice, 'gwei'), 'Gwei');
+                            console.log('Estimated gas:', gasEstimate);
                             
                             await updateBalances();
                             await updatePrices();
@@ -1378,9 +1389,20 @@ try {
                             const blockNumber = await ethereum.request({ method: 'eth_blockNumber' });
                             console.log('Current block number:', parseInt(blockNumber, 16));
                             
-                            // Get gas price
-                            const gasPrice = await ethereum.request({ method: 'eth_gasPrice' });
-                            console.log('Current gas price:', parseInt(gasPrice, 16));
+                            // Get gas price and estimate
+                            const [gasPrice, gasEstimate] = await Promise.all([
+                                ethereum.request({ method: 'eth_gasPrice' }),
+                                ethereum.request({
+                                    method: 'eth_estimateGas',
+                                    params: [{
+                                        from: userAccount,
+                                        to: SWAP_CONTRACT_ADDRESS,
+                                        data: '0x'
+                                    }]
+                                })
+                            ]);
+                            console.log('Current gas price:', web3.utils.fromWei(gasPrice, 'gwei'), 'Gwei');
+                            console.log('Estimated gas:', gasEstimate);
                             
                             await initializeWeb3();
                             await updateBalances();
@@ -1406,9 +1428,22 @@ try {
                     const blockNumber = await ethereum.request({ method: 'eth_blockNumber' });
                     console.log('Current block number:', parseInt(blockNumber, 16));
                     
-                    // Get gas price
-                    const gasPrice = await ethereum.request({ method: 'eth_gasPrice' });
-                    console.log('Current gas price:', parseInt(gasPrice, 16));
+                    // Get gas price and estimate
+                    if (userAccount) {
+                        const [gasPrice, gasEstimate] = await Promise.all([
+                            ethereum.request({ method: 'eth_gasPrice' }),
+                            ethereum.request({
+                                method: 'eth_estimateGas',
+                                params: [{
+                                    from: userAccount,
+                                    to: SWAP_CONTRACT_ADDRESS,
+                                    data: '0x'
+                                }]
+                            })
+                        ]);
+                        console.log('Current gas price:', web3.utils.fromWei(gasPrice, 'gwei'), 'Gwei');
+                        console.log('Estimated gas:', gasEstimate);
+                    }
                     
                     showStatus('MetaMaskが接続されました');
                 } catch (error) {
@@ -1440,7 +1475,10 @@ try {
                 code: error.code,
                 message: error.message,
                 stack: error.stack,
-                data: error.data
+                data: error.data,
+                name: error.name,
+                method: error.method,
+                transaction: error.transaction
             });
 
             if (error.code === -32002) {
@@ -1463,6 +1501,8 @@ try {
                 showStatus('トランザクションがペンディング中です', true);
             } else if (error.code === -32004) {
                 showStatus('トランザクションが拒否されました', true);
+            } else if (error.code === -32005) {
+                showStatus('トランザクションの制限に達しました。後でお試しください。', true);
             } else if (error.message.includes('network')) {
                 showStatus(`${NETWORK_NAME}に切り替えてください`, true);
             } else if (error.message.includes('User rejected')) {
@@ -1479,8 +1519,28 @@ try {
                 showStatus('ガス料金が低すぎます。再度お試しください。', true);
             } else if (error.message.includes('replacement')) {
                 showStatus('トランザクションの置き換えに失敗しました。再度お試しください。', true);
+            } else if (error.message.includes('intrinsic gas')) {
+                showStatus('ガス料金の見積もりに失敗しました。再度お試しください。', true);
+            } else if (error.message.includes('execution reverted')) {
+                showStatus('スマートコントラクトの実行に失敗しました。再度お試しください。', true);
+            } else if (error.message.includes('timeout')) {
+                showStatus('タイムアウトが発生しました。再度お試しください。', true);
+            } else if (error.message.includes('rate limit')) {
+                showStatus('リクエスト制限に達しました。しばらく待ってから再度お試しください。', true);
             } else {
                 showStatus('エラーが発生しました: ' + error.message, true);
+            }
+
+            // Log additional error information if available
+            if (error.transaction) {
+                console.error('Transaction details:', {
+                    from: error.transaction.from,
+                    to: error.transaction.to,
+                    value: error.transaction.value,
+                    gas: error.transaction.gas,
+                    gasPrice: error.transaction.gasPrice,
+                    data: error.transaction.data
+                });
             }
         };
 
@@ -1507,9 +1567,20 @@ try {
                     const blockNumber = await ethereum.request({ method: 'eth_blockNumber' });
                     console.log('Current block number:', parseInt(blockNumber, 16));
                     
-                    // Get gas price
-                    const gasPrice = await ethereum.request({ method: 'eth_gasPrice' });
-                    console.log('Current gas price:', parseInt(gasPrice, 16));
+                    // Get gas price and estimate
+                    const [gasPrice, gasEstimate] = await Promise.all([
+                        ethereum.request({ method: 'eth_gasPrice' }),
+                        ethereum.request({
+                            method: 'eth_estimateGas',
+                            params: [{
+                                from: accounts[0],
+                                to: SWAP_CONTRACT_ADDRESS,
+                                data: '0x'
+                            }]
+                        })
+                    ]);
+                    console.log('Current gas price:', web3.utils.fromWei(gasPrice, 'gwei'), 'Gwei');
+                    console.log('Estimated gas:', gasEstimate);
                     
                     // Initialize Web3 and update UI
                     await initializeWeb3();
