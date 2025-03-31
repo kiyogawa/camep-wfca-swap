@@ -1356,8 +1356,14 @@ try {
                                     }]
                                 })
                             ]);
-                            console.log('Current gas price:', web3.utils.fromWei(gasPrice, 'gwei'), 'Gwei');
+                            const gasPriceGwei = web3.utils.fromWei(gasPrice, 'gwei');
+                            const estimatedCost = web3.utils.fromWei(
+                                web3.utils.toBN(gasPrice).mul(web3.utils.toBN(gasEstimate)),
+                                'ether'
+                            );
+                            console.log('Current gas price:', gasPriceGwei, 'Gwei');
                             console.log('Estimated gas:', gasEstimate);
+                            console.log('Estimated cost:', estimatedCost, 'ETH');
                             
                             await updateBalances();
                             await updatePrices();
@@ -1401,8 +1407,14 @@ try {
                                     }]
                                 })
                             ]);
-                            console.log('Current gas price:', web3.utils.fromWei(gasPrice, 'gwei'), 'Gwei');
+                            const gasPriceGwei = web3.utils.fromWei(gasPrice, 'gwei');
+                            const estimatedCost = web3.utils.fromWei(
+                                web3.utils.toBN(gasPrice).mul(web3.utils.toBN(gasEstimate)),
+                                'ether'
+                            );
+                            console.log('Current gas price:', gasPriceGwei, 'Gwei');
                             console.log('Estimated gas:', gasEstimate);
+                            console.log('Estimated cost:', estimatedCost, 'ETH');
                             
                             await initializeWeb3();
                             await updateBalances();
@@ -1441,8 +1453,14 @@ try {
                                 }]
                             })
                         ]);
-                        console.log('Current gas price:', web3.utils.fromWei(gasPrice, 'gwei'), 'Gwei');
+                        const gasPriceGwei = web3.utils.fromWei(gasPrice, 'gwei');
+                        const estimatedCost = web3.utils.fromWei(
+                            web3.utils.toBN(gasPrice).mul(web3.utils.toBN(gasEstimate)),
+                            'ether'
+                        );
+                        console.log('Current gas price:', gasPriceGwei, 'Gwei');
                         console.log('Estimated gas:', gasEstimate);
+                        console.log('Estimated cost:', estimatedCost, 'ETH');
                     }
                     
                     showStatus('MetaMaskが接続されました');
@@ -1539,7 +1557,9 @@ try {
                     value: error.transaction.value,
                     gas: error.transaction.gas,
                     gasPrice: error.transaction.gasPrice,
-                    data: error.transaction.data
+                    data: error.transaction.data,
+                    maxFeePerGas: error.transaction.maxFeePerGas,
+                    maxPriorityFeePerGas: error.transaction.maxPriorityFeePerGas
                 });
             }
         };
@@ -1579,8 +1599,14 @@ try {
                             }]
                         })
                     ]);
-                    console.log('Current gas price:', web3.utils.fromWei(gasPrice, 'gwei'), 'Gwei');
+                    const gasPriceGwei = web3.utils.fromWei(gasPrice, 'gwei');
+                    const estimatedCost = web3.utils.fromWei(
+                        web3.utils.toBN(gasPrice).mul(web3.utils.toBN(gasEstimate)),
+                        'ether'
+                    );
+                    console.log('Current gas price:', gasPriceGwei, 'Gwei');
                     console.log('Estimated gas:', gasEstimate);
+                    console.log('Estimated cost:', estimatedCost, 'ETH');
                     
                     // Initialize Web3 and update UI
                     await initializeWeb3();
