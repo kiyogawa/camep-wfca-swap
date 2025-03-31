@@ -836,59 +836,91 @@ document.addEventListener('DOMContentLoaded', async () => {
     const camepInput = document.getElementById('camepAmount');
     const depositInput = document.getElementById('depositAmount');
 
-    // Add click event listeners with error handling
-    connectButton.addEventListener('click', async (e) => {
-        e.preventDefault();
-        try {
-            console.log('Connect button clicked');
-            await connectWallet();
-        } catch (error) {
-            console.error('Connect button error:', error);
-            showStatus('接続エラー: ' + error.message, true);
-        }
-    });
+// Add click event listeners with error handling and debounce
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 
-    depositButton.addEventListener('click', async (e) => {
-        e.preventDefault();
-        try {
-            console.log('Deposit button clicked');
-            await performDeposit();
-        } catch (error) {
-            console.error('Deposit button error:', error);
-            showStatus('入金エラー: ' + error.message, true);
-        }
-    });
-
-    swapButton.addEventListener('click', async (e) => {
-        e.preventDefault();
-        try {
-            console.log('Swap button clicked');
-            await performSwap();
-        } catch (error) {
-            console.error('Swap button error:', error);
-            showStatus('スワップエラー: ' + error.message, true);
-        }
-    });
+// Connect button click handler
+connectButton.addEventListener('click', debounce(async (e) => {
+    e.preventDefault();
+    if (connectButton.disabled) return;
     
-    // CAMEP数量の入力イベント
-    camepInput.addEventListener('input', function(e) {
-        console.log('CAMEP input:', e.target.value);
-        try {
-            updateWfcaAmount();
-        } catch (error) {
-            console.error('WFCA amount update error:', error);
-        }
-    });
+    connectButton.disabled = true;
+    try {
+        console.log('Connect button clicked');
+        await connectWallet();
+    } catch (error) {
+        console.error('Connect button error:', error);
+        showStatus('接続エラー: ' + error.message, true);
+        connectButton.disabled = false;
+    }
+}, 500));
 
-    // WFCA入金数量の入力イベント
-    depositInput.addEventListener('input', function(e) {
-        console.log('Deposit input:', e.target.value);
-        try {
-            depositButton.disabled = !e.target.value;
-        } catch (error) {
-            console.error('Deposit button update error:', error);
-        }
-    });
+// Deposit button click handler
+depositButton.addEventListener('click', debounce(async (e) => {
+    e.preventDefault();
+    if (depositButton.disabled) return;
+    
+    depositButton.disabled = true;
+    try {
+        console.log('Deposit button clicked');
+        await performDeposit();
+    } catch (error) {
+        console.error('Deposit button error:', error);
+        showStatus('入金エラー: ' + error.message, true);
+    } finally {
+        depositButton.disabled = !document.getElementById('depositAmount').value;
+    }
+}, 500));
+
+// Swap button click handler
+swapButton.addEventListener('click', debounce(async (e) => {
+    e.preventDefault();
+    if (swapButton.disabled) return;
+    
+    swapButton.disabled = true;
+    try {
+        console.log('Swap button clicked');
+        await performSwap();
+    } catch (error) {
+        console.error('Swap button error:', error);
+        showStatus('スワップエラー: ' + error.message, true);
+    } finally {
+        swapButton.disabled = !document.getElementById('camepAmount').value;
+    }
+}, 500));
+    
+// CAMEP数量の入力イベント
+camepInput.addEventListener('input', debounce(function(e) {
+    console.log('CAMEP input:', e.target.value);
+    try {
+        updateWfcaAmount();
+    } catch (error) {
+        console.error('WFCA amount update error:', error);
+        showStatus('計算エラー: ' + error.message, true);
+    }
+}, 300));
+
+// WFCA入金数量の入力イベント
+depositInput.addEventListener('input', debounce(function(e) {
+    console.log('Deposit input:', e.target.value);
+    try {
+        const value = e.target.value;
+        depositButton.disabled = !value || isNaN(value) || parseFloat(value) <= 0;
+    } catch (error) {
+        console.error('Deposit button update error:', error);
+        depositButton.disabled = true;
+    }
+}, 300));
 
     // Start price updates
     try {
