@@ -1311,12 +1311,20 @@ try {
                                 showStatus(`${NETWORK_NAME}に切り替えてください`, true);
                                 return;
                             }
+                            // Test provider connection
+                            await ethereum.request({ method: 'eth_blockNumber' });
                             await updateBalances();
                             await updatePrices();
                             showStatus('アカウントが変更されました');
                         } catch (error) {
                             console.error('Account update error:', error);
-                            showStatus('アカウント更新エラー: ' + error.message, true);
+                            if (error.code === -32002) {
+                                showStatus('MetaMaskで承認を待っています...', true);
+                            } else if (error.message.includes('network')) {
+                                showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                            } else {
+                                showStatus('アカウント更新エラー: ' + error.message, true);
+                            }
                         }
                     }
                 } catch (error) {
@@ -1337,13 +1345,21 @@ try {
                         resetState();
                     } else {
                         try {
+                            // Test provider connection
+                            await ethereum.request({ method: 'eth_blockNumber' });
                             await initializeWeb3();
                             await updateBalances();
                             await updatePrices();
                             showStatus('ネットワークが変更されました');
                         } catch (error) {
                             console.error('Network update error:', error);
-                            showStatus('ネットワーク更新エラー: ' + error.message, true);
+                            if (error.code === -32002) {
+                                showStatus('MetaMaskで承認を待っています...', true);
+                            } else if (error.message.includes('network')) {
+                                showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                            } else {
+                                showStatus('ネットワーク更新エラー: ' + error.message, true);
+                            }
                         }
                     }
                 } catch (error) {
@@ -1354,8 +1370,20 @@ try {
 
             // Listen for connection events
             ethereum.removeAllListeners('connect');
-            ethereum.on('connect', (connectInfo) => {
+            ethereum.on('connect', async (connectInfo) => {
                 console.log('MetaMask connected:', connectInfo);
+                try {
+                    // Test provider connection
+                    await ethereum.request({ method: 'eth_blockNumber' });
+                    showStatus('MetaMaskが接続されました');
+                } catch (error) {
+                    console.error('Connection test error:', error);
+                    if (error.code === -32002) {
+                        showStatus('MetaMaskで承認を待っています...', true);
+                    } else {
+                        showStatus('接続テストエラー: ' + error.message, true);
+                    }
+                }
             });
 
             ethereum.removeAllListeners('disconnect');
@@ -1371,7 +1399,13 @@ try {
             ethereum.removeAllListeners('error');
             ethereum.on('error', (error) => {
                 console.error('Provider error:', error);
-                showStatus('プロバイダーエラー: ' + error.message, true);
+                if (error.code === -32002) {
+                    showStatus('MetaMaskで承認を待っています...', true);
+                } else if (error.message.includes('network')) {
+                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                } else {
+                    showStatus('プロバイダーエラー: ' + error.message, true);
+                }
             });
         };
 
@@ -1393,6 +1427,9 @@ try {
                 }
 
                 try {
+                    // Test provider connection
+                    await ethereum.request({ method: 'eth_blockNumber' });
+                    
                     // Initialize Web3 and update UI
                     await initializeWeb3();
                     await updateBalances();
@@ -1402,7 +1439,9 @@ try {
                     connectButton.disabled = true;
                 } catch (error) {
                     console.error('Initialization error:', error);
-                    if (error.message.includes('network')) {
+                    if (error.code === -32002) {
+                        showStatus('MetaMaskで承認を待っています...', true);
+                    } else if (error.message.includes('network')) {
                         showStatus(`${NETWORK_NAME}に切り替えてください`, true);
                     } else {
                         showStatus('初期化エラー: ' + error.message, true);
@@ -1429,7 +1468,13 @@ try {
 } catch (error) {
     console.error('Initial setup error:', error);
     connectButton.disabled = true;
-    showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
+    if (error.code === -32002) {
+        showStatus('MetaMaskで承認を待っています...', true);
+    } else if (error.message.includes('network')) {
+        showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+    } else {
+        showStatus('MetaMaskの初期化に失敗しました: ' + error.message, true);
+    }
 }
 });
     </script>
