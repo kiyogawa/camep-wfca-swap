@@ -952,6 +952,7 @@ connectButton.addEventListener('click', async (e) => {
     console.log('Connect button clicked');
     connectButton.disabled = true;
     showStatus('MetaMaskに接続中...');
+    showLoading();
     
     try {
         if (!window.ethereum) {
@@ -964,6 +965,7 @@ connectButton.addEventListener('click', async (e) => {
             console.log('Already connected to account:', accounts[0]);
             userAccount = accounts[0];
             await updateBalances();
+            await updatePrices();
             showStatus('既に接続されています');
             connectButton.textContent = 'ウォレット接続済み';
             return;
@@ -984,10 +986,16 @@ connectButton.addEventListener('click', async (e) => {
             showStatus('ウォレット接続が拒否されました', true);
         } else if (error.code === -32002) {
             showStatus('MetaMaskで承認を待っています...', true);
+        } else if (error.message.includes('already pending')) {
+            showStatus('MetaMaskで承認を待っています...', true);
+        } else if (error.message.includes('network')) {
+            showStatus(`${NETWORK_NAME}に切り替えてください`, true);
         } else {
             showStatus('接続エラー: ' + error.message, true);
         }
         connectButton.disabled = false;
+    } finally {
+        hideLoading();
     }
 });
 
@@ -1102,6 +1110,7 @@ try {
                 } else {
                     userAccount = accounts[0];
                     await updateBalances();
+                    await updatePrices();
                     showStatus('アカウントが変更されました');
                 }
             } catch (error) {
@@ -1139,7 +1148,10 @@ try {
                 console.log('Already connected:', accounts[0]);
                 userAccount = accounts[0];
                 await updateBalances();
+                await updatePrices();
                 showStatus('既に接続されています');
+                connectButton.textContent = 'ウォレット接続済み';
+                connectButton.disabled = true;
             }
         } catch (error) {
             console.error('Account check error:', error);
