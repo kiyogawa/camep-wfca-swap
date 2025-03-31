@@ -1265,9 +1265,20 @@ try {
                         showStatus('ウォレットが切断されました', true);
                     } else {
                         userAccount = accounts[0];
-                        await updateBalances();
-                        await updatePrices();
-                        showStatus('アカウントが変更されました');
+                        try {
+                            // Check network
+                            const chainId = await ethereum.request({ method: 'eth_chainId' });
+                            if (chainId !== REQUIRED_CHAIN_ID) {
+                                showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                                return;
+                            }
+                            await updateBalances();
+                            await updatePrices();
+                            showStatus('アカウントが変更されました');
+                        } catch (error) {
+                            console.error('Account update error:', error);
+                            showStatus('アカウント更新エラー: ' + error.message, true);
+                        }
                     }
                 } catch (error) {
                     console.error('Account change error:', error);
@@ -1286,10 +1297,15 @@ try {
                         connectButton.disabled = false;
                         resetState();
                     } else {
-                        await initializeWeb3();
-                        await updateBalances();
-                        await updatePrices();
-                        showStatus('ネットワークが変更されました');
+                        try {
+                            await initializeWeb3();
+                            await updateBalances();
+                            await updatePrices();
+                            showStatus('ネットワークが変更されました');
+                        } catch (error) {
+                            console.error('Network update error:', error);
+                            showStatus('ネットワーク更新エラー: ' + error.message, true);
+                        }
                     }
                 } catch (error) {
                     console.error('Network change error:', error);
@@ -1299,8 +1315,8 @@ try {
 
             // Listen for connection events
             ethereum.removeAllListeners('connect');
-            ethereum.on('connect', () => {
-                console.log('MetaMask connected');
+            ethereum.on('connect', (connectInfo) => {
+                console.log('MetaMask connected:', connectInfo);
             });
 
             ethereum.removeAllListeners('disconnect');
@@ -1310,6 +1326,13 @@ try {
                 connectButton.textContent = 'MetaMaskに接続';
                 connectButton.disabled = false;
                 showStatus('MetaMaskが切断されました', true);
+            });
+
+            // Listen for provider errors
+            ethereum.removeAllListeners('error');
+            ethereum.on('error', (error) => {
+                console.error('Provider error:', error);
+                showStatus('プロバイダーエラー: ' + error.message, true);
             });
         };
 
@@ -1330,13 +1353,22 @@ try {
                     return;
                 }
 
-                // Initialize Web3 and update UI
-                await initializeWeb3();
-                await updateBalances();
-                await updatePrices();
-                showStatus('既に接続されています');
-                connectButton.textContent = 'ウォレット接続済み';
-                connectButton.disabled = true;
+                try {
+                    // Initialize Web3 and update UI
+                    await initializeWeb3();
+                    await updateBalances();
+                    await updatePrices();
+                    showStatus('既に接続されています');
+                    connectButton.textContent = 'ウォレット接続済み';
+                    connectButton.disabled = true;
+                } catch (error) {
+                    console.error('Initialization error:', error);
+                    if (error.message.includes('network')) {
+                        showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                    } else {
+                        showStatus('初期化エラー: ' + error.message, true);
+                    }
+                }
             }
         } catch (error) {
             console.error('Account check error:', error);
