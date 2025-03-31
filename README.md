@@ -1,58 +1,61 @@
 # CAMEP-WFCA Swap
 
-CAMEPトークンとWFCAトークンの交換サイト
+CAMEP（キャメップ）トークンとWFCA（ワッフカ）トークンのスワップサイト。
+
+## 交換レート
+
+- 1 CAMEP = 100,000 JPY相当のWFCA
+- WFCAの価格は30秒ごとに自動更新
+
+## コントラクトアドレス
+
+- CAMEP: `0x068F6B14CcDE2459ed748616BFeD0cA51074c671`
+- WFCA: `0xae4533189c7281501f04ba4b7c37e3aded402902`
+- スワップコントラクト: `0xBa2e8794Ca2C7e80C4dcB29Ae07A681172e52b2B`
 
 ## 機能
 
-- CAMEP/WFCA交換レート：1 CAMEP = 1円分のWFCA
-- CoinGeckoからのリアルタイム価格取得
-- MetaMaskウォレット連携
-- トークン残高表示
-- 自動レート計算
+- MetaMaskウォレット接続
+- CAMEP/WFCA残高表示
+- WFCA入金機能
+- CAMEP→WFCAスワップ機能
+- リアルタイム価格表示
+  - WFCA価格（JPY）
+  - JPYC価格（USD）
 
-## トークン情報
+## 技術スタック
 
-### CAMEP Token
-- アドレス: 0x068F6B14CcDE2459ed748616BFeD0cA51074c671
-
-### WFCA Token
-- アドレス: 0xae4533189c7281501f04ba4b7c37e3aded402902
+- フロントエンド: HTML/JavaScript
+- Web3: web3.js
+- スマートコントラクト: Solidity
+- 開発環境: Hardhat
+- デプロイ: Netlify
 
 ## セットアップ
 
-1. リポジトリをクローン:
+1. リポジトリをクローン
 ```bash
-git clone https://github.com/[username]/camep-wfca-swap.git
+git clone [repository-url]
 cd camep-wfca-swap
 ```
 
-2. 依存関係のインストール:
+2. 依存関係をインストール
 ```bash
 npm install
 ```
 
-3. 開発サーバーの起動:
+3. 開発サーバーを起動
 ```bash
-npm start
+npx http-server
 ```
 
-## デプロイ
-
-1. Netlifyにデプロイする場合:
-- GitHubリポジトリと連携
-- ビルド設定:
-  - Build command: 不要
-  - Publish directory: ./
-
-## 使い方
-
-1. MetaMaskをインストール
-2. ウォレットを接続
-3. 交換したいCAMEP量を入力
-4. 「Swap」ボタンをクリックして交換を実行
+4. ブラウザで開く
+```
+http://localhost:8080
+```
 
 ## 注意事項
 
-- 必ずMetaMaskをインストールしてください
-- 十分なCAMEPトークン残高があることを確認してください
-- ガス代用のETHが必要です
+- MetaMaskのインストールが必要です
+- イーサリアムメインネットに接続してください
+- スワップ実行時にはガス代が必要です
