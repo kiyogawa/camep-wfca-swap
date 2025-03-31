@@ -981,11 +981,28 @@ connectButton.addEventListener('click', async (e) => {
         if (accounts && accounts.length > 0) {
             console.log('Already connected to account:', accounts[0]);
             userAccount = accounts[0];
-            await updateBalances();
-            await updatePrices();
-            showStatus('既に接続されています');
+            
+            // Initialize Web3 and contracts
+            console.log('Initializing Web3...');
+            await initializeWeb3();
+            console.log('Web3 initialized');
+
+            // Update UI
             connectButton.textContent = 'ウォレット接続済み';
             connectButton.disabled = true;
+
+            // Update balances and prices
+            console.log('Updating balances and prices...');
+            await Promise.all([
+                updateBalances(),
+                updatePrices()
+            ]);
+            console.log('Balances and prices updated');
+
+            showStatus('既に接続されています');
+
+            // Set up event listeners
+            setupMetaMaskListeners(ethereum, connectButton);
             return;
         }
 
