@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CAMEP-WFCA Swap</title>
     <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+    <script>
+        // MetaMaskの初期化を待つ
+        window.ethereum = null;
+        window.addEventListener('ethereum#initialized', () => {
+            window.ethereum = window.ethereum;
+            console.log('MetaMask initialized');
+        }, { once: true });
+
+        // 3秒後にMetaMaskが見つからない場合は初期化完了とみなす
+        setTimeout(() => {
+            if (!window.ethereum) {
+                console.log('MetaMask not found after timeout');
+                window.dispatchEvent(new Event('ethereum#initialized'));
+            }
+        }, 3000);
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -385,63 +401,6 @@ async function initializeWeb3() {
     }
 }
 
-async function initializeUI() {
-    loadingSpinner = document.getElementById('loadingSpinner');
-    statusMessage = document.getElementById('statusMessage');
-    balanceInfo = document.getElementById('balanceInfo');
-
-    // Event Listeners
-    const camepInput = document.getElementById('camepAmount');
-    const depositInput = document.getElementById('depositAmount');
-
-    document.getElementById('connectWallet').addEventListener('click', connectWallet);
-    document.getElementById('depositButton').addEventListener('click', performDeposit);
-    document.getElementById('swapButton').addEventListener('click', performSwap);
-    
-    // CAMEP数量の入力イベント
-    camepInput.addEventListener('input', function(e) {
-        console.log('CAMEP input:', e.target.value);
-        updateWfcaAmount();
-    });
-
-    // WFCA入金数量の入力イベント
-    depositInput.addEventListener('input', function(e) {
-        console.log('Deposit input:', e.target.value);
-        document.getElementById('depositButton').disabled = !e.target.value;
-    });
-
-    // Initialize Web3 if already connected
-    const ethereum = await detectEthereum();
-    if (ethereum) {
-        try {
-            await initializeWeb3();
-            updatePrices();
-            setInterval(updatePrices, 30000);
-
-            // Listen for account changes
-            ethereum.on('accountsChanged', async (accounts) => {
-                userAccount = accounts[0];
-                await connectWallet();
-            });
-
-            // Listen for network changes
-            ethereum.on('chainChanged', async (chainId) => {
-                if (chainId !== REQUIRED_CHAIN_ID) {
-                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-                    document.getElementById('connectWallet').textContent = 'MetaMaskに接続';
-                    resetState();
-                } else {
-                    await initializeWeb3();
-                    await updateBalances();
-                    await updatePrices();
-                }
-            });
-        } catch (error) {
-            console.error('Initial Web3 setup error:', error);
-        }
-    }
-}
-
 function showLoading() {
     loadingSpinner.style.display = 'block';
     document.querySelector('.swap-box').classList.add('loading');
@@ -702,24 +661,72 @@ async function performSwap() {
     }
 }
 
-// Initialize after DOM is ready
+// Initialize UI elements when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing UI...');
-    initializeUI().catch(error => {
-        console.error('UI initialization failed:', error);
-        showStatus('初期化に失敗しました: ' + error.message, true);
+    console.log('DOM loaded, initializing UI elements...');
+    loadingSpinner = document.getElementById('loadingSpinner');
+    statusMessage = document.getElementById('statusMessage');
+    balanceInfo = document.getElementById('balanceInfo');
+
+    // Event Listeners
+    const camepInput = document.getElementById('camepAmount');
+    const depositInput = document.getElementById('depositAmount');
+
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    document.getElementById('depositButton').addEventListener('click', performDeposit);
+    document.getElementById('swapButton').addEventListener('click', performSwap);
+    
+    // CAMEP数量の入力イベント
+    camepInput.addEventListener('input', function(e) {
+        console.log('CAMEP input:', e.target.value);
+        updateWfcaAmount();
+    });
+
+    // WFCA入金数量の入力イベント
+    depositInput.addEventListener('input', function(e) {
+        console.log('Deposit input:', e.target.value);
+        document.getElementById('depositButton').disabled = !e.target.value;
     });
 });
 
-// Also try to initialize when window is fully loaded
-window.addEventListener('load', () => {
-    console.log('Window loaded, checking MetaMask status...');
-    if (!web3) {
-        console.log('Web3 not initialized yet, retrying...');
-        initializeUI().catch(error => {
-            console.error('UI initialization retry failed:', error);
-            showStatus('MetaMaskの接続に失敗しました。ページを更新してください。', true);
-        });
+// Initialize Web3 when window is fully loaded
+window.addEventListener('load', async () => {
+    console.log('Window loaded, checking for MetaMask...');
+    try {
+        const ethereum = await detectEthereum();
+        if (ethereum) {
+            console.log('MetaMask detected, initializing Web3...');
+            await initializeWeb3();
+            updatePrices();
+            setInterval(updatePrices, 30000);
+
+            // Listen for account changes
+            ethereum.on('accountsChanged', async (accounts) => {
+                console.log('Account changed:', accounts[0]);
+                userAccount = accounts[0];
+                await connectWallet();
+            });
+
+            // Listen for network changes
+            ethereum.on('chainChanged', async (chainId) => {
+                console.log('Network changed:', chainId);
+                if (chainId !== REQUIRED_CHAIN_ID) {
+                    showStatus(`${NETWORK_NAME}に切り替えてください`, true);
+                    document.getElementById('connectWallet').textContent = 'MetaMaskに接続';
+                    resetState();
+                } else {
+                    await initializeWeb3();
+                    await updateBalances();
+                    await updatePrices();
+                }
+            });
+        } else {
+            console.log('MetaMask not found');
+            showStatus('MetaMaskをインストールしてください', true);
+        }
+    } catch (error) {
+        console.error('Initial Web3 setup error:', error);
+        showStatus('MetaMaskの接続に失敗しました。ページを更新してください。', true);
     }
 });
     </script>
