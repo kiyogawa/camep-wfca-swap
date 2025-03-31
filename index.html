@@ -520,13 +520,23 @@ async function detectEthereum() {
     // Check if MetaMask is already available
     if (window.ethereum) {
         console.log('MetaMask detected immediately');
-        return window.ethereum;
+        if (window.ethereum.isMetaMask) {
+            console.log('Confirmed MetaMask provider');
+            return window.ethereum;
+        } else {
+            console.log('Found non-MetaMask provider');
+        }
     }
 
     // Check for legacy Web3
     if (window.web3 && window.web3.currentProvider) {
         console.log('Legacy Web3 provider detected');
-        return window.web3.currentProvider;
+        if (window.web3.currentProvider.isMetaMask) {
+            console.log('Confirmed legacy MetaMask provider');
+            return window.web3.currentProvider;
+        } else {
+            console.log('Found non-MetaMask legacy provider');
+        }
     }
 
     console.log('No Web3 provider found, waiting for injection...');
@@ -535,50 +545,70 @@ async function detectEthereum() {
     // Wait for MetaMask to be injected
     return new Promise((resolve) => {
         let isResolved = false;
-        const checkInterval = 100; // ms
-        const maxWaitTime = 3000; // 3 seconds
-        const maxTries = maxWaitTime / checkInterval;
-        let tries = 0;
+        let detectionInterval;
+        let initializationTimeout;
+
+        const cleanup = () => {
+            if (detectionInterval) clearInterval(detectionInterval);
+            if (initializationTimeout) clearTimeout(initializationTimeout);
+            window.removeEventListener('ethereum#initialized', handleInitialized);
+        };
 
         const resolveOnce = (provider) => {
             if (!isResolved) {
                 isResolved = true;
-                clearInterval(interval);
+                cleanup();
                 resolve(provider);
             }
         };
 
-        const interval = setInterval(() => {
-            if (window.ethereum) {
-                console.log('MetaMask detected after waiting');
-                resolveOnce(window.ethereum);
-                return;
-            }
-
-            tries++;
-            if (tries % 10 === 0) {
-                console.log(`Still waiting for MetaMask... (${tries}/${maxTries})`);
-            }
-
-            if (tries >= maxTries) {
-                console.log('MetaMask detection timeout');
-                resolveOnce(null);
-            }
-        }, checkInterval);
-
-        // Also listen for the ethereum#initialized event
-        window.addEventListener('ethereum#initialized', () => {
+        const handleInitialized = () => {
             console.log('MetaMask initialized event received');
-            resolveOnce(window.ethereum);
-        }, { once: true });
+            if (window.ethereum && window.ethereum.isMetaMask) {
+                console.log('Confirmed MetaMask provider after initialization');
+                resolveOnce(window.ethereum);
+            } else {
+                console.log('Found non-MetaMask provider after initialization');
+            }
+        };
 
-        // Fallback timeout
-        setTimeout(() => {
+        // Listen for the ethereum#initialized event
+        window.addEventListener('ethereum#initialized', handleInitialized);
+
+        // Check for MetaMask every 100ms
+        let attempts = 0;
+        const maxAttempts = 30;
+        detectionInterval = setInterval(() => {
+            attempts++;
+            
+            if (window.ethereum) {
+                if (window.ethereum.isMetaMask) {
+                    console.log('Confirmed MetaMask provider after waiting');
+                    resolveOnce(window.ethereum);
+                    return;
+                } else {
+                    console.log('Found non-MetaMask provider while waiting');
+                }
+            }
+
+            if (attempts >= maxAttempts) {
+                console.log('MetaMask detection timeout');
+                cleanup();
+                showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
+                resolveOnce(null);
+            } else if (attempts % 10 === 0) {
+                console.log(`Still waiting for MetaMask... (${attempts}/${maxAttempts})`);
+            }
+        }, 100);
+
+        // Fallback timeout after 5 seconds
+        initializationTimeout = setTimeout(() => {
             if (!isResolved) {
                 console.log('MetaMask detection final timeout');
+                cleanup();
                 resolveOnce(null);
             }
-        }, maxWaitTime + 1000);
+        }, 5000);
     });
 }
 
