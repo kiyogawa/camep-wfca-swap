@@ -290,10 +290,23 @@ let statusMessage;
 let balanceInfo;
 
 async function detectEthereum() {
+    console.log('Checking for Web3 provider...');
+
     // Check if MetaMask is already available
     if (window.ethereum) {
         console.log('MetaMask detected immediately');
-        return window.ethereum;
+        try {
+            // Request account access
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            console.log('Account access granted');
+            return window.ethereum;
+        } catch (error) {
+            console.error('Account access denied:', error);
+            if (error.code === 4001) {
+                showStatus('ウォレット接続が拒否されました', true);
+            }
+            throw error;
+        }
     }
 
     // Check for legacy Web3
@@ -303,7 +316,7 @@ async function detectEthereum() {
     }
 
     console.log('No Web3 provider found, waiting for injection...');
-    showStatus('MetaMaskをインストールしてください', true);
+    showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
 
     // Wait for MetaMask to be injected
     return new Promise((resolve) => {
@@ -329,6 +342,7 @@ async function detectEthereum() {
                 console.log('MetaMask detection timeout');
                 clearInterval(interval);
                 resolve(null);
+                showStatus('MetaMaskをインストールしてください: https://metamask.io', true);
             }
         }, checkInterval);
 
@@ -517,13 +531,20 @@ async function updateBalances() {
 }
 
 async function connectWallet() {
+    console.log('Connecting wallet...');
+    const connectButton = document.getElementById('connectWallet');
+    
     try {
         showLoading();
         showStatus('MetaMaskに接続中...');
 
+        // Initialize Web3
         await initializeWeb3();
+        console.log('Web3 initialized');
 
-        document.getElementById('connectWallet').textContent = 'ウォレット接続済み';
+        // Update UI
+        connectButton.textContent = 'ウォレット接続済み';
+        connectButton.disabled = true;
         updateWfcaAmount();
         await updateBalances();
         await updatePrices();
@@ -532,9 +553,11 @@ async function connectWallet() {
 
         // Listen for network changes
         window.ethereum.on('chainChanged', async (chainId) => {
+            console.log('Network changed:', chainId);
             if (chainId !== REQUIRED_CHAIN_ID) {
                 showStatus(`${NETWORK_NAME}に切り替えてください`, true);
-                document.getElementById('connectWallet').textContent = 'MetaMaskに接続';
+                connectButton.textContent = 'MetaMaskに接続';
+                connectButton.disabled = false;
                 resetState();
             } else {
                 await initializeWeb3();
@@ -545,12 +568,23 @@ async function connectWallet() {
 
         // Listen for account changes
         window.ethereum.on('accountsChanged', async (accounts) => {
-            userAccount = accounts[0];
-            await updateBalances();
+            console.log('Account changed:', accounts);
+            if (accounts.length === 0) {
+                console.log('User disconnected');
+                connectButton.textContent = 'MetaMaskに接続';
+                connectButton.disabled = false;
+                resetState();
+                showStatus('ウォレットが切断されました', true);
+            } else {
+                userAccount = accounts[0];
+                await updateBalances();
+            }
         });
 
     } catch (error) {
         console.error('Wallet connection error:', error);
+        connectButton.disabled = false;
+
         if (error.code === 4001) {
             showStatus('ウォレット接続が拒否されました', true);
         } else if (error.code === -32002) {
@@ -559,6 +593,8 @@ async function connectWallet() {
             showStatus('MetaMaskで承認を待っています...', true);
         } else if (error.message.includes('getCode')) {
             showStatus('コントラクトの読み込みに失敗しました。ネットワーク接続を確認してください。', true);
+        } else if (error.message.includes('network')) {
+            showStatus(`${NETWORK_NAME}に切り替えてください`, true);
         } else {
             showStatus('ウォレット接続エラー: ' + error.message, true);
         }
