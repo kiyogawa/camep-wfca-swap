@@ -1345,7 +1345,7 @@ try {
                             console.log('Current block number:', parseInt(blockNumber, 16));
                             
                             // Get gas price and estimate
-                            const [gasPrice, gasEstimate] = await Promise.all([
+                            const [gasPrice, gasEstimate, maxPriorityFeePerGas] = await Promise.all([
                                 ethereum.request({ method: 'eth_gasPrice' }),
                                 ethereum.request({
                                     method: 'eth_estimateGas',
@@ -1354,14 +1354,17 @@ try {
                                         to: SWAP_CONTRACT_ADDRESS,
                                         data: '0x'
                                     }]
-                                })
+                                }),
+                                ethereum.request({ method: 'eth_maxPriorityFeePerGas' })
                             ]);
                             const gasPriceGwei = web3.utils.fromWei(gasPrice, 'gwei');
+                            const maxPriorityFeeGwei = web3.utils.fromWei(maxPriorityFeePerGas, 'gwei');
                             const estimatedCost = web3.utils.fromWei(
                                 web3.utils.toBN(gasPrice).mul(web3.utils.toBN(gasEstimate)),
                                 'ether'
                             );
                             console.log('Current gas price:', gasPriceGwei, 'Gwei');
+                            console.log('Max priority fee:', maxPriorityFeeGwei, 'Gwei');
                             console.log('Estimated gas:', gasEstimate);
                             console.log('Estimated cost:', estimatedCost, 'ETH');
                             
@@ -1396,7 +1399,7 @@ try {
                             console.log('Current block number:', parseInt(blockNumber, 16));
                             
                             // Get gas price and estimate
-                            const [gasPrice, gasEstimate] = await Promise.all([
+                            const [gasPrice, gasEstimate, maxPriorityFeePerGas] = await Promise.all([
                                 ethereum.request({ method: 'eth_gasPrice' }),
                                 ethereum.request({
                                     method: 'eth_estimateGas',
@@ -1405,14 +1408,17 @@ try {
                                         to: SWAP_CONTRACT_ADDRESS,
                                         data: '0x'
                                     }]
-                                })
+                                }),
+                                ethereum.request({ method: 'eth_maxPriorityFeePerGas' })
                             ]);
                             const gasPriceGwei = web3.utils.fromWei(gasPrice, 'gwei');
+                            const maxPriorityFeeGwei = web3.utils.fromWei(maxPriorityFeePerGas, 'gwei');
                             const estimatedCost = web3.utils.fromWei(
                                 web3.utils.toBN(gasPrice).mul(web3.utils.toBN(gasEstimate)),
                                 'ether'
                             );
                             console.log('Current gas price:', gasPriceGwei, 'Gwei');
+                            console.log('Max priority fee:', maxPriorityFeeGwei, 'Gwei');
                             console.log('Estimated gas:', gasEstimate);
                             console.log('Estimated cost:', estimatedCost, 'ETH');
                             
@@ -1442,7 +1448,7 @@ try {
                     
                     // Get gas price and estimate
                     if (userAccount) {
-                        const [gasPrice, gasEstimate] = await Promise.all([
+                        const [gasPrice, gasEstimate, maxPriorityFeePerGas] = await Promise.all([
                             ethereum.request({ method: 'eth_gasPrice' }),
                             ethereum.request({
                                 method: 'eth_estimateGas',
@@ -1451,14 +1457,17 @@ try {
                                     to: SWAP_CONTRACT_ADDRESS,
                                     data: '0x'
                                 }]
-                            })
+                            }),
+                            ethereum.request({ method: 'eth_maxPriorityFeePerGas' })
                         ]);
                         const gasPriceGwei = web3.utils.fromWei(gasPrice, 'gwei');
+                        const maxPriorityFeeGwei = web3.utils.fromWei(maxPriorityFeePerGas, 'gwei');
                         const estimatedCost = web3.utils.fromWei(
                             web3.utils.toBN(gasPrice).mul(web3.utils.toBN(gasEstimate)),
                             'ether'
                         );
                         console.log('Current gas price:', gasPriceGwei, 'Gwei');
+                        console.log('Max priority fee:', maxPriorityFeeGwei, 'Gwei');
                         console.log('Estimated gas:', gasEstimate);
                         console.log('Estimated cost:', estimatedCost, 'ETH');
                     }
@@ -1559,7 +1568,9 @@ try {
                     gasPrice: error.transaction.gasPrice,
                     data: error.transaction.data,
                     maxFeePerGas: error.transaction.maxFeePerGas,
-                    maxPriorityFeePerGas: error.transaction.maxPriorityFeePerGas
+                    maxPriorityFeePerGas: error.transaction.maxPriorityFeePerGas,
+                    nonce: error.transaction.nonce,
+                    chainId: error.transaction.chainId
                 });
             }
         };
@@ -1588,7 +1599,7 @@ try {
                     console.log('Current block number:', parseInt(blockNumber, 16));
                     
                     // Get gas price and estimate
-                    const [gasPrice, gasEstimate] = await Promise.all([
+                    const [gasPrice, gasEstimate, maxPriorityFeePerGas] = await Promise.all([
                         ethereum.request({ method: 'eth_gasPrice' }),
                         ethereum.request({
                             method: 'eth_estimateGas',
@@ -1597,14 +1608,17 @@ try {
                                 to: SWAP_CONTRACT_ADDRESS,
                                 data: '0x'
                             }]
-                        })
+                        }),
+                        ethereum.request({ method: 'eth_maxPriorityFeePerGas' })
                     ]);
                     const gasPriceGwei = web3.utils.fromWei(gasPrice, 'gwei');
+                    const maxPriorityFeeGwei = web3.utils.fromWei(maxPriorityFeePerGas, 'gwei');
                     const estimatedCost = web3.utils.fromWei(
                         web3.utils.toBN(gasPrice).mul(web3.utils.toBN(gasEstimate)),
                         'ether'
                     );
                     console.log('Current gas price:', gasPriceGwei, 'Gwei');
+                    console.log('Max priority fee:', maxPriorityFeeGwei, 'Gwei');
                     console.log('Estimated gas:', gasEstimate);
                     console.log('Estimated cost:', estimatedCost, 'ETH');
                     
